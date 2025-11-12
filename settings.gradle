@@ -1,4 +1,5 @@
 rootProject.name = 'edhTGbot'
 include 'telegramBot'
 include 'backend'
+include 'common'
 

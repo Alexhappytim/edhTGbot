@@ -1,4 +1,4 @@
-package com.alexhappytim.edhTGbot.backend.dto;
+package com.alexhappytim.mtg.dto;
 
 import lombok.Data;
 
@@ -8,4 +8,5 @@ public class UserDTO {
     private String userTag;
     private Long telegramId;
     private String displayName;
+    private Long chatId;
 }

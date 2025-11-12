@@ -1,9 +1,9 @@
 package com.alexhappytim.edhTGbot.backend.controller;
 
-import com.alexhappytim.edhTGbot.backend.dto.*;
 import com.alexhappytim.edhTGbot.backend.model.*;
 import com.alexhappytim.edhTGbot.backend.repository.*;
 import com.alexhappytim.edhTGbot.backend.service.SwissTournamentService;
+import com.alexhappytim.mtg.dto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,6 +30,7 @@ public class TournamentController {
                 .name(request.getName())
                 .maxPlayers(request.getMaxPlayers())
                 .status(TournamentStatus.REGISTRATION)
+                .owner(userRepository.findByTelegramId(request.getOwnerId()).get())
                 .build();
         tournament = tournamentRepository.save(tournament);
         TournamentDTO dto = new TournamentDTO();
@@ -41,33 +42,43 @@ public class TournamentController {
         return ResponseEntity.ok(dto);
     }
 
-    @PostMapping("/{id}/participants")
+    @PostMapping("/{id}/join")
     public ResponseEntity<ParticipantDTO> addParticipant(@PathVariable Long id, @RequestBody JoinTournamentRequest request) {
         Optional<Tournament> tournamentOpt = tournamentRepository.findById(id);
-        Optional<User> userOpt = userRepository.findById(request.getUserId());
+        Optional<User> userOpt = userRepository.findByTelegramId(request.getUserId());
         if (tournamentOpt.isEmpty()) {
             throw new IllegalArgumentException("Tournament not found");
         }
         if (userOpt.isEmpty()) {
             throw new IllegalArgumentException("User not found");
         }
+        if (request.getIsTryingToAdd()){
+           if(!Objects.equals(tournamentOpt.get().getOwner().getId(), userOpt.get().getId())){
+               throw new IllegalArgumentException("It is not your tournament");
+           }
+        }
         Tournament tournament = tournamentOpt.get();
         User user = userOpt.get();
         if (tournament.getStatus() != TournamentStatus.REGISTRATION) {
             throw new IllegalStateException("Cannot join: Tournament is not in registration phase");
         }
-        if (tournament.getParticipants().stream().anyMatch(p -> p.getUser().getId().equals(user.getId()))) {
+        if (tournament.getParticipants().stream().anyMatch(p -> p.getUser().getId().equals(user.getId())) && !request.getIsTryingToAdd()) {
             throw new IllegalStateException("User already registered in this tournament");
         }
+//        if (tournament.getParticipants().stream().anyMatch(p -> p.getUser().getDisplayName().equals(user.getId())) && !request.getIsTryingToAdd()) {
+//            throw new IllegalStateException("User already registered in this tournament");
+//        }
         if (tournament.getParticipants().size() >= tournament.getMaxPlayers()) {
             throw new IllegalStateException("Tournament is full");
         }
         Participant participant = Participant.builder()
-                .user(user)
                 .tournament(tournament)
                 .points(0)
                 .tieBreaker(0)
                 .build();
+        if(!request.getIsTryingToAdd()){
+            participant.setUser(user);
+        }
         participant = participantRepository.save(participant);
         ParticipantDTO dto = new ParticipantDTO();
         UserDTO userDTO = new UserDTO();
@@ -81,11 +92,6 @@ public class TournamentController {
         return ResponseEntity.ok(dto);
     }
 
-    @PostMapping("/{id}/join")
-    public ResponseEntity<ParticipantDTO> joinTournament(@PathVariable Long id, @RequestBody JoinTournamentRequest request) {
-        // For now, same as addParticipant
-        return addParticipant(id, request);
-    }
 
     @PostMapping("/{id}/start-round")
     public ResponseEntity<Void> startNextRound(@PathVariable Long id) {

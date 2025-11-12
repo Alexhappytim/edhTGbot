@@ -1,7 +1,6 @@
 package com.alexhappytim.edhTGbot.backend.controller;
 
-import com.alexhappytim.edhTGbot.backend.dto.CreateUserRequest;
-import com.alexhappytim.edhTGbot.backend.dto.UserDTO;
+import com.alexhappytim.mtg.dto.*;
 import com.alexhappytim.edhTGbot.backend.model.User;
 import com.alexhappytim.edhTGbot.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +24,9 @@ public class UserController {
         if (request.getTelegramId() == null) {
             throw new IllegalArgumentException("TelegramId is required");
         }
+        if (request.getChatId() == null) {
+            throw new IllegalArgumentException("TelegramId is required");
+        }
         if (userRepository.findByUserTag(request.getUserTag()).isPresent()) {
             throw new IllegalStateException("UserTag already exists");
         }
@@ -32,6 +34,7 @@ public class UserController {
                 .userTag(request.getUserTag())
                 .displayName(request.getDisplayName())
                 .telegramId(request.getTelegramId())
+                .chatId(request.getChatId())
                 .build();
         user = userRepository.save(user);
         UserDTO dto = new UserDTO();
@@ -39,6 +42,7 @@ public class UserController {
         dto.setUserTag(user.getUserTag());
         dto.setTelegramId(user.getTelegramId());
         dto.setDisplayName(user.getDisplayName());
+        dto.setChatId(user.getChatId());
         return ResponseEntity.ok(dto);
     }
 }

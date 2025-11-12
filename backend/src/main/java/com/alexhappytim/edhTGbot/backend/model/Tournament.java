@@ -17,6 +17,10 @@ public class Tournament {
     @Column(nullable = false)
     private String name;
 
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "user_id")
+    private User owner;
+
     @Column(nullable = false)
     private int maxPlayers;
 

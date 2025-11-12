@@ -1,4 +1,4 @@
-package com.alexhappytim.edhTGbot.backend.dto;
+package com.alexhappytim.mtg.dto;
 
 import lombok.Data;
 
