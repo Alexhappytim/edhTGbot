@@ -1,13 +1,13 @@
-package com.alexhappytim.mtg.edhTGbot;
+package com.alexhappytim.edhTGbot.backend;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class EdhTgBotApplication {
+public class BackendApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(EdhTgBotApplication.class, args);
+		SpringApplication.run(BackendApplication.class, args);
 	}
 
 }

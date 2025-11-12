@@ -39,3 +39,20 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+tasks.register('buildAll') {
+	group = 'build'
+	description = 'Собирает backend и frontend.'
+
+	dependsOn ':backend:bootJar', ':telegramBot:jar'
+	doLast {
+		def targetDir = file("$buildDir/distributions")
+		targetDir.mkdirs()
+
+		copy {
+			from(project(':backend').tasks.named('bootJar').get().archiveFile)
+			from(project(':frontend').tasks.named('jar').get().archiveFile)
+			into targetDir
+		}
+		println "JAR-файлы собраны в: ${targetDir}"
+	}
+}

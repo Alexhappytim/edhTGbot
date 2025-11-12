@@ -1,1 +1,4 @@
 rootProject.name = 'edhTGbot'
+include 'telegramBot'
+include 'backend'
+
