@@ -76,8 +76,18 @@ public class TournamentController {
                 .points(0)
                 .tieBreaker(0)
                 .build();
-        if(!request.getIsTryingToAdd()){
+        if (!request.getIsTryingToAdd()){
             participant.setUser(user);
+        }
+        else {
+            User tempUser = User.builder()
+                    .userTag("")
+                    .displayName(request.getParticipantName())
+                    .telegramId((long) -1)
+                    .chatId((long) -1)
+                    .build();
+            tempUser = userRepository.save(tempUser);
+            participant.setUser(tempUser);
         }
         participant = participantRepository.save(participant);
         ParticipantDTO dto = new ParticipantDTO();

@@ -6,6 +6,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Data
 @NoArgsConstructor
@@ -17,5 +20,11 @@ public class Patron {
     private Long id;
 
     @Column(nullable = false)
-    private String displayName;
+    @ManyToOne(fetch = FetchType.LAZY)
+    private User user;
+
+    @Builder.Default
+    @Column(nullable = false)
+    @OneToMany(fetch = FetchType.LAZY)
+    private List<User> patrons = new ArrayList<>();
 }
