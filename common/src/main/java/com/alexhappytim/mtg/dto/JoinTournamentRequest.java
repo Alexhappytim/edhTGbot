@@ -10,5 +10,5 @@ import lombok.NoArgsConstructor;
 public class JoinTournamentRequest {
     private Long userId;
     private String participantName;
-    private Boolean isTryingToAdd;
+    private Boolean isTemporary;
 }

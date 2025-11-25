@@ -13,13 +13,9 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false)
     private String userTag;
-    @Column(nullable = false)
     private Long telegramId;
     @Column(nullable = false)
     private String displayName;
-    @Column(nullable = false)
     private Long chatId;
 }

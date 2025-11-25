@@ -9,7 +9,7 @@ public class BotApplication {
         String botUsername = System.getenv("TELEGRAM_BOT_USERNAME");
         String restBaseUrl = System.getenv().getOrDefault("REST_BASE_URL", "http://localhost:8080");
         Long adminID = Long.parseLong(System.getenv("ADMIN_ID"));
-        SwissTournamentBot bot = new SwissTournamentBot(botToken, botUsername, restBaseUrl, adminID);
+        MagicBot bot = new MagicBot(botToken, botUsername, restBaseUrl, adminID);
         try {
             TelegramBotsLongPollingApplication app = new TelegramBotsLongPollingApplication();
             app.registerBot(botToken, bot);

@@ -15,21 +15,26 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<UserDTO> registerUser(@RequestBody CreateUserRequest request) {
-        if (request.getUserTag() == null || request.getUserTag().isBlank()) {
-            throw new IllegalArgumentException("UserTag is required");
-        }
         if (request.getDisplayName() == null || request.getDisplayName().isBlank()) {
             throw new IllegalArgumentException("Display name is required");
+        }
+
+        if (request.getUserTag() == null || request.getUserTag().isBlank()) {
+            throw new IllegalArgumentException("UserTag is required");
         }
         if (request.getTelegramId() == null) {
             throw new IllegalArgumentException("TelegramId is required");
         }
         if (request.getChatId() == null) {
-            throw new IllegalArgumentException("TelegramId is required");
+            throw new IllegalArgumentException("ChatId is required");
         }
         if (userRepository.findByUserTag(request.getUserTag()).isPresent()) {
             throw new IllegalStateException("UserTag already exists");
         }
+
+
+
+
         User user = User.builder()
                 .userTag(request.getUserTag())
                 .displayName(request.getDisplayName())

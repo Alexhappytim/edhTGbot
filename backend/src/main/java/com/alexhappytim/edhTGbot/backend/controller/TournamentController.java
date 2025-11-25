@@ -44,62 +44,62 @@ public class TournamentController {
 
     @PostMapping("/{id}/join")
     public ResponseEntity<ParticipantDTO> addParticipant(@PathVariable Long id, @RequestBody JoinTournamentRequest request) {
-        Optional<Tournament> tournamentOpt = tournamentRepository.findById(id);
-        Optional<User> userOpt = userRepository.findByTelegramId(request.getUserId());
-        if (tournamentOpt.isEmpty()) {
-            throw new IllegalArgumentException("Tournament not found");
-        }
-        if (userOpt.isEmpty()) {
-            throw new IllegalArgumentException("User not found");
-        }
-        if (request.getIsTryingToAdd()){
-           if(!Objects.equals(tournamentOpt.get().getOwner().getId(), userOpt.get().getId())){
-               throw new IllegalArgumentException("It is not your tournament");
-           }
-        }
-        Tournament tournament = tournamentOpt.get();
-        User user = userOpt.get();
-        if (tournament.getStatus() != TournamentStatus.REGISTRATION) {
-            throw new IllegalStateException("Cannot join: Tournament is not in registration phase");
-        }
-        if (tournament.getParticipants().stream().anyMatch(p -> p.getUser().getId().equals(user.getId())) && !request.getIsTryingToAdd()) {
-            throw new IllegalStateException("User already registered in this tournament");
-        }
-//        if (tournament.getParticipants().stream().anyMatch(p -> p.getUser().getDisplayName().equals(user.getId())) && !request.getIsTryingToAdd()) {
+//        Optional<Tournament> tournamentOpt = tournamentRepository.findById(id);
+//        Optional<User> userOpt = userRepository.findByTelegramId(request.getUserId());
+//        if (tournamentOpt.isEmpty()) {
+//            throw new IllegalArgumentException("Tournament not found");
+//        }
+//        if (userOpt.isEmpty()) {
+//            throw new IllegalArgumentException("User not found");
+//        }
+//        if (request.getIsTemporary()){
+//           if(!Objects.equals(tournamentOpt.get().getOwner().getId(), userOpt.get().getId())){
+//               throw new IllegalArgumentException("It is not your tournament");
+//           }
+//        }
+//        Tournament tournament = tournamentOpt.get();
+//        User user = userOpt.get();
+//        if (tournament.getStatus() != TournamentStatus.REGISTRATION) {
+//            throw new IllegalStateException("Cannot join: Tournament is not in registration phase");
+//        }
+//        if (tournament.getParticipants().stream().anyMatch(p -> p.getUser().getId().equals(user.getId())) && !request.getIsTemporary()) {
 //            throw new IllegalStateException("User already registered in this tournament");
 //        }
-        if (tournament.getParticipants().size() >= tournament.getMaxPlayers()) {
-            throw new IllegalStateException("Tournament is full");
-        }
-        Participant participant = Participant.builder()
-                .tournament(tournament)
-                .points(0)
-                .tieBreaker(0)
-                .build();
-        if (!request.getIsTryingToAdd()){
-            participant.setUser(user);
-        }
-        else {
-            User tempUser = User.builder()
-                    .userTag("")
-                    .displayName(request.getParticipantName())
-                    .telegramId((long) -1)
-                    .chatId((long) -1)
-                    .build();
-            tempUser = userRepository.save(tempUser);
-            participant.setUser(tempUser);
-        }
-        participant = participantRepository.save(participant);
-        ParticipantDTO dto = new ParticipantDTO();
-        UserDTO userDTO = new UserDTO();
-        userDTO.setId(user.getId());
-        userDTO.setUserTag(user.getUserTag());
-        userDTO.setDisplayName(user.getDisplayName());
-        dto.setId(participant.getId());
-        dto.setUser(userDTO);
-        dto.setPoints(0);
-        dto.setTieBreaker(0);
-        return ResponseEntity.ok(dto);
+////        if (tournament.getParticipants().stream().anyMatch(p -> p.getUser().getDisplayName().equals(user.getId())) && !request.getIsTryingToAdd()) {
+////            throw new IllegalStateException("User already registered in this tournament");
+////        }
+//        if (tournament.getParticipants().size() >= tournament.getMaxPlayers()) {
+//            throw new IllegalStateException("Tournament is full");
+//        }
+//        Participant participant = Participant.builder()
+//                .tournament(tournament)
+//                .points(0)
+//                .tieBreaker(0)
+//                .build();
+//        if (!request.getIsTryingToAdd()){
+//            participant.setUser(user);
+//        }
+//        else {
+//            User tempUser = User.builder()
+//                    .userTag("")
+//                    .displayName(request.getParticipantName())
+//                    .telegramId((long) -1)
+//                    .chatId((long) -1)
+//                    .build();
+//            tempUser = userRepository.save(tempUser);
+//            participant.setUser(tempUser);
+//        }
+//        participant = participantRepository.save(participant);
+//        ParticipantDTO dto = new ParticipantDTO();
+//        UserDTO userDTO = new UserDTO();
+//        userDTO.setId(user.getId());
+//        userDTO.setUserTag(user.getUserTag());
+//        userDTO.setDisplayName(user.getDisplayName());
+//        dto.setId(participant.getId());
+//        dto.setUser(userDTO);
+//        dto.setPoints(0);
+//        dto.setTieBreaker(0);
+        return ResponseEntity.ok(new ParticipantDTO());
     }
 
 
