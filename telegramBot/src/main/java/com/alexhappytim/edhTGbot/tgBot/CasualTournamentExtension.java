@@ -27,12 +27,14 @@ public class CasualTournamentExtension implements AbilityExtension {
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
     private final SilentSender silent;
+    private final SessionProvider sessionProvider;
 
-    public CasualTournamentExtension(String restBaseUrl, ObjectMapper objectMapper, RestTemplate restTemplate, SilentSender silent) {
+    public CasualTournamentExtension(String restBaseUrl, ObjectMapper objectMapper, RestTemplate restTemplate, SilentSender silent, SessionProvider sessionProvider) {
         this.restBaseUrl = restBaseUrl;
         this.objectMapper = objectMapper;
         this.restTemplate = restTemplate;
         this.silent = silent;
+        this.sessionProvider = sessionProvider;
     }
 
     // Create a casual tournament
@@ -51,11 +53,17 @@ public class CasualTournamentExtension implements AbilityExtension {
     public Ability joinCasualTournament() {
         return Ability.builder()
                 .name("joincasual")
-                .info("Join a casual tournament: /joincasual <tournamentId>")
+                .info("Join a casual tournament using selected tournament")
                 .privacy(PUBLIC)
                 .locality(USER)
-                .input(1)
-                .action(this::handleJoinCasualTournament)
+                .action(ctx -> {
+                    Long tid = getSessionTournamentId(ctx);
+                    if (tid == null) {
+                        requestTournamentSelection(ctx);
+                        return;
+                    }
+                    handleJoinCasualTournament(ctx, tid);
+                })
                 .build();
     }
 
@@ -159,11 +167,17 @@ public class CasualTournamentExtension implements AbilityExtension {
     public Ability casualInfo() {
         return Ability.builder()
                 .name("casualinfo")
-                .info("Get casual tournament info: /casualinfo <tournamentId>")
+                .info("Get casual tournament info using selected tournament")
                 .privacy(PUBLIC)
                 .locality(USER)
-                .input(1)
-                .action(this::handleCasualInfo)
+                .action(ctx -> {
+                    Long tid = getSessionTournamentId(ctx);
+                    if (tid == null) {
+                        requestTournamentSelection(ctx);
+                        return;
+                    }
+                    handleCasualInfo(ctx, tid);
+                })
                 .build();
     }
 
@@ -187,7 +201,19 @@ public class CasualTournamentExtension implements AbilityExtension {
         }
     }
 
-    private void handleJoinCasualTournament(MessageContext ctx) {
+    private Long getSessionTournamentId(MessageContext ctx) {
+        UserSession s = sessionProvider.getSession(ctx.user().getId());
+        if (s == null || s.getTournamentId() == null || s.getType() != UserSession.TournamentType.CASUAL) {
+            return null;
+        }
+        return s.getTournamentId();
+    }
+
+    private void requestTournamentSelection(MessageContext ctx) {
+        sessionProvider.promptSelectTournamentType(ctx.chatId());
+    }
+
+    private void handleJoinCasualTournament(MessageContext ctx, Long tournamentId) {
         log.info("User {} joining casual tournament: {}", ctx.user().getUserName(), ctx.firstArg());
         try {
             JoinTournamentRequest request = new JoinTournamentRequest(ctx.user().getId(), ctx.user().getUserName(), false);
@@ -195,7 +221,7 @@ public class CasualTournamentExtension implements AbilityExtension {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<JoinTournamentRequest> entity = new HttpEntity<>(request, headers);
 
-            ResponseEntity<String> response = restTemplate.postForEntity(restBaseUrl + "/tournamentsCasual/" + ctx.firstArg() + "/join", entity, String.class);
+            ResponseEntity<String> response = restTemplate.postForEntity(restBaseUrl + "/tournamentsCasual/" + tournamentId + "/join", entity, String.class);
             JsonNode node = objectMapper.readTree(response.getBody());
             log.info("User {} joined casual tournament {} successfully", ctx.user().getUserName(), ctx.firstArg());
             sendMessage(ctx, "Joined casual tournament! User: " + node.get("displayName").asText());
@@ -352,10 +378,10 @@ public class CasualTournamentExtension implements AbilityExtension {
         }
     }
 
-    private void handleCasualInfo(MessageContext ctx) {
+    private void handleCasualInfo(MessageContext ctx, Long tournamentId) {
         log.debug("User {} requesting info for tournament {}", ctx.user().getUserName(), ctx.firstArg());
         try {
-            ResponseEntity<String> response = restTemplate.getForEntity(restBaseUrl + "/tournamentsCasual/" + ctx.firstArg(), String.class);
+            ResponseEntity<String> response = restTemplate.getForEntity(restBaseUrl + "/tournamentsCasual/" + tournamentId, String.class);
             JsonNode tournament = objectMapper.readTree(response.getBody());
             log.debug("Retrieved info for tournament {}", ctx.firstArg());
             StringBuilder sb = new StringBuilder();
