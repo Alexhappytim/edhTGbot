@@ -27,5 +27,5 @@ public abstract class Command{
         this.inputPrompt = inputPrompt;
     }
 
-    public abstract void execute(BotFacade bot, MessageContext ctx, UserSessionAdapter session);
+    public abstract void execute(BotFacade bot, Update update);
 }

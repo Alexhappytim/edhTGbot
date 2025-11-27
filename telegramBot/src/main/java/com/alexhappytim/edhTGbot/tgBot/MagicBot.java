@@ -2,6 +2,7 @@ package com.alexhappytim.edhTGbot.tgBot;
 
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.KeyboardRegistry;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.KeyboardWrapper;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.CommandGroup;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.StateType;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.CommandRegistry;
@@ -26,6 +27,8 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 
 import org.springframework.web.client.RestTemplate;
+
+import java.util.ArrayList;
 
 import static java.lang.Math.toIntExact;
 import static org.telegram.telegrambots.abilitybots.api.objects.Locality.USER;
@@ -73,8 +76,11 @@ public class MagicBot extends AbilityBot implements BotFacade {
                 long userId = update.getMessage().getFrom().getId();
                 UserSession session = sessions.get(userId);
 
-                if (session != null && session.getAwaitingInputFor() != null) {
-                    handleAwaitingInput(update, userId, session);
+                if (session != null && session.getPendingCommandKey() != null) {
+                    session.setInput(String.valueOf(update.getMessage()));
+                    commandRegistry.get(session.getPendingCommandKey()).execute(this, update);
+                    session.setPendingCommandKey(null);
+                    session.setInput(null);
                     return;
                 }
             }
@@ -95,6 +101,16 @@ public class MagicBot extends AbilityBot implements BotFacade {
 //            UserSession s = sessions.computeIfAbsent(userId, k -> new UserSession());
             log.info("User {} selected keyboard: {}", userId, kbdName);
             editMessage(update.getCallbackQuery().getMessage().getChatId(),update.getCallbackQuery().getMessage().getMessageId(), keyboardWrapper.getText(),keyboardWrapper.getKeyboard());
+        }else if(data != null && data.startsWith("cmd:")){
+            String cmdName = data.substring("cmd:".length());
+            Command command= commandRegistry.get(cmdName);
+            if(command.isNeedsInput()){
+                UserSession userSession = sessions.get(userId);
+                userSession.setPendingCommandKey(cmdName);
+                editMessage(update.getCallbackQuery().getMessage().getChatId(),update.getCallbackQuery().getMessage().getMessageId(), command.getInputPrompt(),new InlineKeyboardMarkup(new ArrayList<>()));
+            }else{
+                command.execute(this, update);
+            }
         }
     }
     @Override
@@ -164,42 +180,6 @@ public class MagicBot extends AbilityBot implements BotFacade {
     @Override
     public ObjectMapper getObjectMapper() {
         return objectMapper;
-    }
-
-
-    private void handleAwaitingInput(Update update, long userId, UserSession session) {
-//        long chatId = update.getMessage().getChatId();
-//        String text = update.getMessage().getText().trim();
-//
-//        if ("tournamentId".equals(session.getAwaitingInputFor())) {
-//            try {
-//                Long tid = Long.parseLong(text);
-//                session.setTournamentId(tid);
-//                session.setAwaitingInputFor(null);
-//                log.info("User {} selected tournament: {} #{}", userId, session.getType(), tid);
-//                silent.execute(SendMessage.builder().chatId(chatId)
-//                        .text("✅ Tournament selected: " + session.getType() + " #" + tid)
-//                        .build());
-//            } catch (NumberFormatException nfe) {
-//                log.warn("User {} sent invalid tournament ID: {}", userId, text);
-//                silent.execute(SendMessage.builder().chatId(chatId)
-//                        .text("❌ Invalid ID. Please send a numeric tournament ID.")
-//                        .build());
-//            }
-//        }
-//        if (session.getState() == StateType.INPUT && session.getPendingCommandKey() != null) {
-//            BotCommand cmd = commandRegistry.get(session.getPendingCommandKey());
-//            if (cmd != null) {
-//                        InlineKeyboardMarkup kb = keyboardRegistry.get("main");
-//                    cmd.getExecutor().accept(text);
-//                    silent.execute(SendMessage.builder().chatId(chatId).text("✅ Executed: " + cmd.getLabel()).build());
-//                } catch (Exception ex) {
-//                    silent.execute(SendMessage.builder().chatId(chatId).text("❌ Failed: " + ex.getMessage()).build());
-//                }
-//            }
-//            session.setPendingCommandKey(null);
-//            session.setState(StateType.GROUP);
-//            if (session.getCurrentGroup() != null) sendGroupMenu(chatId, session.getCurrentGroup());
     }
 
     public void sendMessage(long chatID, String text) {

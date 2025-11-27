@@ -12,12 +12,15 @@ public class CommandRegistry {
     private final Map<String, Command> commands = new ConcurrentHashMap<>();
 
     public CommandRegistry() {
-//        commands.put(command.getKey(), command);
-    }
+//        register(new HelloWorld());
 
+    }
+    private void register(Command command){
+        commands.put(command.getKey(), command);
+    }
     public Command get(String key) { return commands.get(key); }
 
-    public Collection<Command> getByGroup(CommandGroup group) {
-        return commands.values().stream().filter(c -> c.getGroup() == group).collect(Collectors.toList());
-    }
+//    public Collection<Command> getByGroup(CommandGroup group) {
+//        return commands.values().stream().filter(c -> c.getGroup() == group).collect(Collectors.toList());
+//    }
 }
