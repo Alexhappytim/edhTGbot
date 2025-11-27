@@ -1,4 +1,4 @@
-package com.alexhappytim.edhTGbot.tgBot.stateMachine;
+package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands;
 
 public enum CommandGroup {
     REGISTRATION,

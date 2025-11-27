@@ -1,6 +1,6 @@
 package com.alexhappytim.edhTGbot.tgBot;
 
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.CommandGroup;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.CommandGroup;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.StateType;
 
 public class UserSession {
