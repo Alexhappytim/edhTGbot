@@ -1,22 +1,18 @@
 package com.alexhappytim.edhTGbot.tgBot;
 
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.KeyboardRegistry;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.KeyboardType;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.KeyboardWrapper;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.CommandGroup;
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.StateType;
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.CommandRegistry;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.CommandType;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpEntity;
 
 
 import org.telegram.telegrambots.abilitybots.api.bot.AbilityBot;
 import org.telegram.telegrambots.abilitybots.api.objects.Ability;
-import org.telegram.telegrambots.abilitybots.api.objects.MessageContext;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -28,7 +24,8 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static java.lang.Math.toIntExact;
 import static org.telegram.telegrambots.abilitybots.api.objects.Locality.USER;
@@ -36,26 +33,21 @@ import static org.telegram.telegrambots.abilitybots.api.objects.Privacy.PUBLIC;
 
 public class MagicBot extends AbilityBot implements BotFacade {
     private static final Logger log = LoggerFactory.getLogger(MagicBot.class);
-    private final java.util.Map<Long, UserSession> sessions = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<Long, UserSession> sessions = new ConcurrentHashMap<>();
 
     private final String restBaseUrl;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final Long adminID;
-    private final KeyboardRegistry keyboards;
-    private final CommandRegistry commandRegistry;
 
     public MagicBot(String botToken, String botUsername, String restBaseUrl, Long adminID) {
         super(new OkHttpTelegramClient(botToken), botUsername);
         this.restBaseUrl = restBaseUrl;
         this.adminID = adminID;
-        this.keyboards = new KeyboardRegistry();
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
-        this.commandRegistry = new CommandRegistry();
 
         log.info("Initializing MagicBot with username: {}, REST URL: {}", botUsername, restBaseUrl);
-
 //        this.addExtension(new SwissTournamentExtension(restBaseUrl, objectMapper, restTemplate, silent));
 //        this.addExtension(new CasualTournamentExtension(restBaseUrl, objectMapper, restTemplate, silent, this));
 
@@ -65,6 +57,19 @@ public class MagicBot extends AbilityBot implements BotFacade {
     @Override
     public void consume(Update update) {
         try {
+            long userId = 0;
+            if (update.hasCallbackQuery()) {
+                userId = update.getCallbackQuery().getFrom().getId();
+            }
+            else if(update.hasMessage()){
+                userId = update.getMessage().getFrom().getId();
+            }
+
+            UserSession session = sessions.get(userId);
+            if(session == null){
+                sessions.put(userId, new UserSession(null, null, null, null));
+                session = sessions.get(userId);
+            }
             // Handle callback queries for inline keyboards
             if (update.hasCallbackQuery()) {
                 handleCallbackQuery(update);
@@ -72,15 +77,32 @@ public class MagicBot extends AbilityBot implements BotFacade {
             }
 
             // Check if user is awaiting input before processing commands
-            if (update.hasMessage() && update.getMessage().hasText() && !update.getMessage().getText().subSequence(0, 1).equals("/")) {
-                long userId = update.getMessage().getFrom().getId();
-                UserSession session = sessions.get(userId);
+            if (update.hasMessage() && update.getMessage().hasText() && !update.getMessage().getText().startsWith("/")) {
+                if (session.getPendingCommandKey() != null) {
+                    Command cmd = CommandType.fromKey(session.getPendingCommandKey());
+                    if (session.getInputs() == null) session.setInputs(new java.util.ArrayList<>());
+                    if (session.getInputStep() == null) session.setInputStep(0);
+                    session.getInputs().add(update.getMessage().getText().trim());
+                    int nextStep = session.getInputStep() + 1;
+                    if (nextStep < cmd.getRequiredInputs()) {
+                        session.setInputStep(nextStep);
+                        InlineKeyboardRow cancelRow = new InlineKeyboardRow();
+                        cancelRow.add(InlineKeyboardButton.builder().text("Отмена").callbackData("cancel").build());
+                        InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder().keyboard(java.util.List.of(cancelRow)).build();
+                        editMessage(update.getMessage().getChatId(), update.getMessage().getMessageId(), cmd.getInputPrompt(nextStep), kb);
+                    } else {
+                        // execute now
+                        cmd.execute(this, update);
+                        session.setPendingCommandKey(null);
+                        session.setInputs(null);
+                        session.setInputStep(null);
+                        String kbdName = cmd.getNextKeyboard();
+                        KeyboardType kbdType = KeyboardType.fromKey(kbdName);
+                        KeyboardWrapper keyboardWrapper = kbdType != null ? kbdType.getKeyboard() : KeyboardType.MAIN.getKeyboard();
+                        log.info("User {} selected keyboard: {}", userId, kbdName);
+                        sendMessage(update.getMessage().getChatId(), keyboardWrapper.getText(),keyboardWrapper.getKeyboard());
 
-                if (session != null && session.getPendingCommandKey() != null) {
-                    session.setInput(String.valueOf(update.getMessage()));
-                    commandRegistry.get(session.getPendingCommandKey()).execute(this, update);
-                    session.setPendingCommandKey(null);
-                    session.setInput(null);
+                    }
                     return;
                 }
             }
@@ -88,26 +110,52 @@ public class MagicBot extends AbilityBot implements BotFacade {
             // Normal command processing
             super.consume(update);
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error(e.getMessage());
+            e.printStackTrace();
         }
     }
     private void handleCallbackQuery(Update update) {
         long userId = update.getCallbackQuery().getFrom().getId();
         String data = update.getCallbackQuery().getData();
 
+        if (data != null && data.equals("cancel")) {
+            UserSession session = sessions.get(userId);
+            if (session != null && session.getPendingCommandKey() != null) {
+                Command cmd = CommandType.fromKey(session.getPendingCommandKey());
+                String kbdName = cmd != null ? cmd.getNextKeyboard() : "main";
+                session.setPendingCommandKey(null);
+                session.setInputs(null);
+                session.setInputStep(null);
+                KeyboardType kbdType = KeyboardType.fromKey(kbdName);
+                KeyboardWrapper keyboardWrapper = kbdType != null ? kbdType.getKeyboard() : KeyboardType.MAIN.getKeyboard();
+                log.info("User {} cancelled input, returning to keyboard: {}", userId, kbdName);
+                editMessage(update.getCallbackQuery().getMessage().getChatId(),
+                        update.getCallbackQuery().getMessage().getMessageId(),
+                        keyboardWrapper.getText(),
+                        keyboardWrapper.getKeyboard());
+            }
+            return;
+        }
+
         if (data != null && data.startsWith("kbd:")) {
             String kbdName = data.substring("kbd:".length());
-            KeyboardWrapper keyboardWrapper =  keyboards.getKeyboard(kbdName);
+            KeyboardType kbdType = KeyboardType.fromKey(kbdName);
+            KeyboardWrapper keyboardWrapper = kbdType != null ? kbdType.getKeyboard() : KeyboardType.MAIN.getKeyboard();
 //            UserSession s = sessions.computeIfAbsent(userId, k -> new UserSession());
             log.info("User {} selected keyboard: {}", userId, kbdName);
             editMessage(update.getCallbackQuery().getMessage().getChatId(),update.getCallbackQuery().getMessage().getMessageId(), keyboardWrapper.getText(),keyboardWrapper.getKeyboard());
         }else if(data != null && data.startsWith("cmd:")){
             String cmdName = data.substring("cmd:".length());
-            Command command= commandRegistry.get(cmdName);
-            if(command.isNeedsInput()){
+            Command command = CommandType.fromKey(cmdName);
+            if(command.needsInput()){
                 UserSession userSession = sessions.get(userId);
                 userSession.setPendingCommandKey(cmdName);
-                editMessage(update.getCallbackQuery().getMessage().getChatId(),update.getCallbackQuery().getMessage().getMessageId(), command.getInputPrompt(),new InlineKeyboardMarkup(new ArrayList<>()));
+                userSession.setInputs(new java.util.ArrayList<>());
+                userSession.setInputStep(0);
+                InlineKeyboardRow cancelRow = new InlineKeyboardRow();
+                cancelRow.add(InlineKeyboardButton.builder().text("Отмена").callbackData("cancel").build());
+                InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder().keyboard(java.util.List.of(cancelRow)).build();
+                editMessage(update.getCallbackQuery().getMessage().getChatId(),update.getCallbackQuery().getMessage().getMessageId(), command.getInputPrompt(0), kb);
             }else{
                 command.execute(this, update);
             }
@@ -118,17 +166,6 @@ public class MagicBot extends AbilityBot implements BotFacade {
         return adminID;
     }
 
-    public Ability register() {
-        return Ability.builder()
-                .name("register")
-                .info("Register a new user: /register <username> <displayName>")
-                .privacy(PUBLIC)
-                .locality(USER)
-                .input(1)
-                .action(this::handleRegister)
-                .build();
-    }
-
     public Ability start() {
         return Ability.builder()
                 .name("start")
@@ -136,7 +173,7 @@ public class MagicBot extends AbilityBot implements BotFacade {
                 .privacy(PUBLIC)
                 .locality(USER)
                 .action(ctx -> {
-                    KeyboardWrapper kb = keyboards.getKeyboard("main");
+                    KeyboardWrapper kb = KeyboardType.MAIN.getKeyboard();
                     SendMessage msg = SendMessage.builder()
                             .chatId(ctx.chatId())
                             .text(kb.getText())
@@ -145,10 +182,6 @@ public class MagicBot extends AbilityBot implements BotFacade {
                     silent.execute(msg);
                 })
                 .build();
-    }
-
-    private void handleRegister(MessageContext ctx) {
-
     }
 
     // SessionProvider implementation
@@ -210,21 +243,5 @@ public class MagicBot extends AbilityBot implements BotFacade {
         );
     }
 
-    private void sendGroupMenu(long chatId, CommandGroup group) {
-//        java.util.List<InlineKeyboardRow> rows = new java.util.ArrayList<>();
-//        for (BotCommand cmd : commandRegistry.values()) {
-//            if (cmd.getGroup() == group) {
-//                InlineKeyboardRow r = new InlineKeyboardRow();
-//                r.add(InlineKeyboardButton.builder().text(cmd.getLabel()).callbackData("cmd:" + cmd.getKey()).build());
-//                rows.add(r);
-//            }
-//        }
-//        InlineKeyboardRow back = new InlineKeyboardRow();
-//        back.add(InlineKeyboardButton.builder().text("Back").callbackData("back:main").build());
-//        rows.add(back);
-//        silent.execute(SendMessage.builder().chatId(chatId)
-//                .text("Group: " + group.name())
-//                .replyMarkup(InlineKeyboardMarkup.builder().keyboard(rows).build())
-//                .build());
-    }
+
 }
