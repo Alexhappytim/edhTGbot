@@ -89,14 +89,32 @@ public class TournamentCasualController {
     }
 
     @PostMapping("/{id}/ready")
-    public ResponseEntity<Void> markUserReady(@PathVariable Long id, @RequestParam Long userId, @RequestParam Long requesterId) {
-        casualTournamentService.markUserReady(id, userId, requesterId);
+    public ResponseEntity<Void> markUserReady(@PathVariable Long id, @RequestParam Integer playerPosition, @RequestParam Long adminId) {
+        casualTournamentService.markUserReady(id, playerPosition, adminId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/self-ready")
+    public ResponseEntity<Void> markSelfReady(@PathVariable Long id, @RequestParam Long userId) {
+        casualTournamentService.markSelfReady(id, userId);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/not-ready")
-    public ResponseEntity<Void> markUserNotReady(@PathVariable Long id, @RequestParam Long userId, @RequestParam Long adminId) {
-        casualTournamentService.markUserNotReady(id, userId, adminId);
+    public ResponseEntity<Void> markUserNotReady(@PathVariable Long id, @RequestParam Integer playerPosition, @RequestParam Long adminId) {
+        casualTournamentService.markUserNotReady(id, playerPosition, adminId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/ready-all")
+    public ResponseEntity<Void> markAllReady(@PathVariable Long id, @RequestParam Long adminId) {
+        casualTournamentService.markAllReady(id, adminId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/ready-group")
+    public ResponseEntity<Void> markGroupReady(@PathVariable Long id, @RequestParam Integer groupNumber, @RequestParam Long adminId) {
+        casualTournamentService.markGroupReady(id, groupNumber, adminId);
         return ResponseEntity.ok().build();
     }
 

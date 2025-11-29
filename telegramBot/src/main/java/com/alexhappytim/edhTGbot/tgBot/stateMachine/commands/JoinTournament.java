@@ -11,7 +11,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class JoinTournament extends Command {
 
     public JoinTournament() {
-        super("jointournament", 1, "main", "Введите ID турнира");
+        super("join_tournament", 1, "main", "Введите ID турнира");
     }
 
     @Override

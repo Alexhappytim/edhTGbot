@@ -11,7 +11,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class AddToTournament extends Command {
 
     public AddToTournament() {
-        super("addtotournament", 2, "main",
+        super("add_to_tournament", 2, "main",
               "Введите ID турнира", 
               "Введите имя игрока для добавления");
     }

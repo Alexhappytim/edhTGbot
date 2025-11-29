@@ -12,7 +12,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class JoinCasual extends Command {
 
     public JoinCasual() {
-        super("joincasual", 1, "main", "Введите ID казуал турнира");
+        super("join_casual", 1, "main", "Введите ID казуал турнира");
     }
 
     @Override

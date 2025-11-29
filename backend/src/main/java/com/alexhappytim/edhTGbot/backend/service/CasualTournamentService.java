@@ -57,11 +57,11 @@ public class CasualTournamentService {
      * Reshuffle only ready users into new groups.
      */
     @Transactional
-    public List<CasualGroup> reshuffleReady(Long tournamentId, Long adminId) {
+    public List<CasualGroup> reshuffleReady(Long tournamentId, Long adminTelegramId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
 
-        if (!tournament.getOwner().getId().equals(adminId)) {
+        if (!tournament.getOwner().getTelegramId().equals(adminTelegramId)) {
             throw new IllegalStateException("Only the tournament owner can reshuffle");
         }
 
@@ -93,27 +93,49 @@ public class CasualTournamentService {
 
     /**
      * Mark a user as ready (by user themselves or by admin).
+     * @param playerPosition 1-based position of player in tournament (for admin use)
+     * @param requesterTelegramId Telegram ID of the requester
      */
     @Transactional
-    public void markUserReady(Long tournamentId, Long userId, Long requesterId) {
+    public void markUserReady(Long tournamentId, Integer playerPosition, Long requesterTelegramId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        boolean isAdmin = tournament.getOwner().getTelegramId().equals(requesterTelegramId);
 
-        boolean isAdmin = tournament.getOwner().getId().equals(requesterId);
-        boolean isSelf = userId.equals(requesterId);
-
-        if (!isAdmin && !isSelf) {
-            throw new IllegalStateException("Only the user or admin can mark this user as ready");
+        if (!isAdmin) {
+            throw new IllegalStateException("Only the tournament owner can mark users as ready by position");
         }
 
-        if (!tournament.getUsers().stream().anyMatch(u -> u.getId().equals(userId))) {
+        List<User> users = new ArrayList<>(tournament.getUsers());
+        if (playerPosition < 1 || playerPosition > users.size()) {
+            throw new IllegalArgumentException("Invalid player position. Must be between 1 and " + users.size());
+        }
+
+        User user = users.get(playerPosition - 1);
+
+        if (tournament.getUsersReady().stream().noneMatch(u -> u.getId().equals(user.getId()))) {
+            tournament.getUsersReady().add(user);
+            tournamentCasualRepository.save(tournament);
+        }
+    }
+
+    /**
+     * Mark self as ready (by user themselves).
+     */
+    @Transactional
+    public void markSelfReady(Long tournamentId, Long userTelegramId) {
+        TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
+                .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
+
+        User user = userRepository.findByTelegramId(userTelegramId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (!tournament.getUsers().stream().anyMatch(u -> u.getTelegramId().equals(userTelegramId))) {
             throw new IllegalStateException("User is not registered in this tournament");
         }
 
-        if (tournament.getUsersReady().stream().noneMatch(u -> u.getId().equals(userId))) {
+        if (tournament.getUsersReady().stream().noneMatch(u -> u.getTelegramId().equals(userTelegramId))) {
             tournament.getUsersReady().add(user);
             tournamentCasualRepository.save(tournament);
         }
@@ -121,17 +143,68 @@ public class CasualTournamentService {
 
     /**
      * Mark a user as not ready (by admin only).
+     * @param playerPosition 1-based position of player in tournament
      */
     @Transactional
-    public void markUserNotReady(Long tournamentId, Long userId, Long adminId) {
+    public void markUserNotReady(Long tournamentId, Integer playerPosition, Long adminTelegramId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
 
-        if (!tournament.getOwner().getId().equals(adminId)) {
+        if (!tournament.getOwner().getTelegramId().equals(adminTelegramId)) {
             throw new IllegalStateException("Only the tournament owner can mark users as not ready");
         }
 
-        tournament.getUsersReady().removeIf(u -> u.getId().equals(userId));
+        List<User> users = new ArrayList<>(tournament.getUsers());
+        if (playerPosition < 1 || playerPosition > users.size()) {
+            throw new IllegalArgumentException("Invalid player position. Must be between 1 and " + users.size());
+        }
+
+        User user = users.get(playerPosition - 1);
+        tournament.getUsersReady().removeIf(u -> u.getId().equals(user.getId()));
+        tournamentCasualRepository.save(tournament);
+    }
+
+    /**
+     * Mark all users as ready for shuffle.
+     */
+    @Transactional
+    public void markAllReady(Long tournamentId, Long adminTelegramId) {
+        TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
+                .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
+
+        if (!tournament.getOwner().getTelegramId().equals(adminTelegramId)) {
+            throw new IllegalStateException("Only the tournament owner can mark all users as ready");
+        }
+
+        tournament.getUsersReady().clear();
+        tournament.getUsersReady().addAll(tournament.getUsers());
+        tournamentCasualRepository.save(tournament);
+    }
+
+    /**
+     * Mark all players from a specific group as ready for shuffle.
+     * @param groupNumber The group number (1-based)
+     */
+    @Transactional
+    public void markGroupReady(Long tournamentId, Integer groupNumber, Long adminTelegramId) {
+        TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
+                .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
+
+        if (!tournament.getOwner().getTelegramId().equals(adminTelegramId)) {
+            throw new IllegalStateException("Only the tournament owner can mark group as ready");
+        }
+
+        CasualGroup group = tournament.getGroups().stream()
+                .filter(g -> g.getGroupNumber() == groupNumber)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Group " + groupNumber + " not found"));
+
+        // Add all players from this group to ready list (avoiding duplicates)
+        for (User player : group.getPlayers()) {
+            if (tournament.getUsersReady().stream().noneMatch(u -> u.getId().equals(player.getId()))) {
+                tournament.getUsersReady().add(player);
+            }
+        }
         tournamentCasualRepository.save(tournament);
     }
 

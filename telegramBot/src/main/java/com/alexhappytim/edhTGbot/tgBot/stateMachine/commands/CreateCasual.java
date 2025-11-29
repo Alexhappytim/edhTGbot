@@ -12,7 +12,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class CreateCasual extends Command {
 
     public CreateCasual() {
-        super("createcasual", 1, "main", "Введите название казуал турнира");
+        super("create_casual", 1, "tournament_admin_casual", "Введите название казуал турнира");
     }
 
     @Override

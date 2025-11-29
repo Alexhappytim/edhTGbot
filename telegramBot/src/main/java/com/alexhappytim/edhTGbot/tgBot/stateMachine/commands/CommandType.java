@@ -25,6 +25,8 @@ public enum CommandType {
     READY_CASUAL(new ReadyCasual()),
     ADMIN_READY(new AdminReady()),
     ADMIN_NOT_READY(new AdminNotReady()),
+    READY_ALL(new ReadyAll()),
+    READY_GROUP(new ReadyGroup()),
     RESHUFFLE_CASUAL(new ReshuffleCasual()),
     CASUAL_GROUPS(new CasualGroups()),
     CASUAL_READY_LIST(new CasualReadyList()),

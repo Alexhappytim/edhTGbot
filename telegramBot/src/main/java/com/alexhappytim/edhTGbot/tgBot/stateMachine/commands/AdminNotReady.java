@@ -6,9 +6,9 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class AdminNotReady extends Command {
 
     public AdminNotReady() {
-        super("adminnotready", 2, "main",
+        super("admin_not_ready", 2, "tournament_admin_casual",
               "Введите ID казуал турнира", 
-              "Введите ID пользователя");
+              "Введите номер игрока в списке (используйте /casualinfo для просмотра)");
     }
 
     @Override
@@ -16,17 +16,17 @@ public class AdminNotReady extends Command {
         long adminId = update.getMessage().getFrom().getId();
         long chatId = update.getMessage().getChatId();
         String tournamentId = bot.getSession(adminId).getInputs().get(0);
-        String targetUserId = bot.getSession(adminId).getInputs().get(1);
+        String playerPosition = bot.getSession(adminId).getInputs().get(1);
         
-        bot.getLogger().info("Admin {} marking user {} as not ready in tournament {}", 
-                update.getMessage().getFrom().getUserName(), targetUserId, tournamentId);
+        bot.getLogger().info("Admin {} marking player #{} as not ready in tournament {}", 
+                update.getMessage().getFrom().getUserName(), playerPosition, tournamentId);
         try {
             String url = bot.getRestBaseUrl() + "/tournamentsCasual/" + tournamentId + 
-                         "/not-ready?userId=" + targetUserId + "&adminId=" + adminId;
+                         "/not-ready?playerPosition=" + playerPosition + "&adminId=" + adminId;
             bot.getRestTemplate().postForEntity(url, null, String.class);
-            bot.getLogger().info("User {} marked as not ready by admin {} in tournament {}", 
-                    targetUserId, update.getMessage().getFrom().getUserName(), tournamentId);
-            bot.sendMessage(chatId, "Пользователь " + targetUserId + " отмечен как не готовый!");
+            bot.getLogger().info("Player #{} marked as not ready by admin {} in tournament {}", 
+                    playerPosition, update.getMessage().getFrom().getUserName(), tournamentId);
+            bot.sendMessage(chatId, "Игрок #" + playerPosition + " отмечен как не готовый!");
         } catch (Exception e) {
             bot.getLogger().error("Admin not ready failed: {}", e.getMessage(), e);
             bot.sendMessage(chatId, "Ошибка: " + e.getMessage());

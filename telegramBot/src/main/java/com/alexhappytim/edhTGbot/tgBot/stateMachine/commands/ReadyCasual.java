@@ -6,7 +6,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class ReadyCasual extends Command {
 
     public ReadyCasual() {
-        super("readycasual", 1, "main", "Введите ID казуал турнира");
+        super("ready_casual", 1, "tournament_admin_casual", "Введите ID казуал турнира");
     }
 
     @Override
@@ -19,7 +19,7 @@ public class ReadyCasual extends Command {
                 update.getMessage().getFrom().getUserName(), tournamentId);
         try {
             String url = bot.getRestBaseUrl() + "/tournamentsCasual/" + tournamentId + 
-                         "/ready?userId=" + userId + "&requesterId=" + userId;
+                         "/self-ready?userId=" + userId;
             bot.getRestTemplate().postForEntity(url, null, String.class);
             bot.getLogger().info("User {} marked as ready in tournament {}", 
                     update.getMessage().getFrom().getUserName(), tournamentId);

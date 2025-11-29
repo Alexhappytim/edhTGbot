@@ -8,7 +8,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class ReshuffleCasual extends Command {
 
     public ReshuffleCasual() {
-        super("reshufflecasual", 1, "main", "Введите ID казуал турнира");
+        super("reshuffle_casual", 1, "tournament_admin_casual", "Введите ID казуал турнира");
     }
 
     @Override

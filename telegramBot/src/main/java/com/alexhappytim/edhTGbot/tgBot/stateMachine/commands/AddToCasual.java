@@ -12,7 +12,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class AddToCasual extends Command {
 
     public AddToCasual() {
-        super("addtocasual", 2, "main",
+        super("add_to_casual", 2, "tournament_admin_casual",
               "Введите ID казуал турнира", 
               "Введите имя игрока");
     }

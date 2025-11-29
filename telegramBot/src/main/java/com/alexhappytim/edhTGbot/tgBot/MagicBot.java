@@ -89,7 +89,7 @@ public class MagicBot extends AbilityBot implements BotFacade {
                         InlineKeyboardRow cancelRow = new InlineKeyboardRow();
                         cancelRow.add(InlineKeyboardButton.builder().text("Отмена").callbackData("cancel").build());
                         InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder().keyboard(java.util.List.of(cancelRow)).build();
-                        editMessage(update.getMessage().getChatId(), update.getMessage().getMessageId(), cmd.getInputPrompt(nextStep), kb);
+                        sendMessage(update.getMessage().getChatId(), cmd.getInputPrompt(nextStep), kb);
                     } else {
                         // execute now
                         cmd.execute(this, update);

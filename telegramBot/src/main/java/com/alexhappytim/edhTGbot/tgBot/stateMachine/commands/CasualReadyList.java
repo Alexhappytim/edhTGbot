@@ -8,7 +8,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class CasualReadyList extends Command {
 
     public CasualReadyList() {
-        super("casualreadylist", 1, "main", "Введите ID казуал турнира");
+        super("casual_ready_list", 1, "tournament_admin_casual", "Введите ID казуал турнира");
     }
 
     @Override

@@ -13,7 +13,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class CreateTournament extends Command {
 
     public CreateTournament() {
-        super("createtournament", 2, "main",
+        super("create_tournament", 2, "main",
               "Введите название турнира", 
               "Введите максимальное количество игроков");
     }
