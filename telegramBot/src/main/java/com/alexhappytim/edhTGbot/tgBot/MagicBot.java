@@ -1,9 +1,9 @@
 package com.alexhappytim.edhTGbot.tgBot;
 
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.KeyboardType;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.Keyboards;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.KeyboardWrapper;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.CommandType;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Commands;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -70,16 +70,16 @@ public class MagicBot extends AbilityBot implements BotFacade {
                 sessions.put(userId, new UserSession(null, null, null, null));
                 session = sessions.get(userId);
             }
-            // Handle callback queries for inline keyboards
+
             if (update.hasCallbackQuery()) {
                 handleCallbackQuery(update);
                 return;
             }
 
-            // Check if user is awaiting input before processing commands
+
             if (update.hasMessage() && update.getMessage().hasText() && !update.getMessage().getText().startsWith("/")) {
                 if (session.getPendingCommandKey() != null) {
-                    Command cmd = CommandType.fromKey(session.getPendingCommandKey());
+                    Command cmd = Commands.fromKey(session.getPendingCommandKey());
                     if (session.getInputs() == null) session.setInputs(new java.util.ArrayList<>());
                     if (session.getInputStep() == null) session.setInputStep(0);
                     session.getInputs().add(update.getMessage().getText().trim());
@@ -91,17 +91,15 @@ public class MagicBot extends AbilityBot implements BotFacade {
                         InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder().keyboard(java.util.List.of(cancelRow)).build();
                         sendMessage(update.getMessage().getChatId(), cmd.getInputPrompt(nextStep), kb);
                     } else {
-                        // execute now
                         cmd.execute(this, update);
                         session.setPendingCommandKey(null);
                         session.setInputs(null);
                         session.setInputStep(null);
                         String kbdName = cmd.getNextKeyboard();
-                        KeyboardType kbdType = KeyboardType.fromKey(kbdName);
-                        KeyboardWrapper keyboardWrapper = kbdType != null ? kbdType.getKeyboard() : KeyboardType.MAIN.getKeyboard();
+                        Keyboards kbdType = Keyboards.fromKey(kbdName);
+                        KeyboardWrapper keyboardWrapper = kbdType != null ? kbdType.getKeyboard() : Keyboards.MAIN.getKeyboard();
                         log.info("User {} selected keyboard: {}", userId, kbdName);
                         sendMessage(update.getMessage().getChatId(), keyboardWrapper.getText(),keyboardWrapper.getKeyboard());
-
                     }
                     return;
                 }
@@ -121,13 +119,13 @@ public class MagicBot extends AbilityBot implements BotFacade {
         if (data != null && data.equals("cancel")) {
             UserSession session = sessions.get(userId);
             if (session != null && session.getPendingCommandKey() != null) {
-                Command cmd = CommandType.fromKey(session.getPendingCommandKey());
+                Command cmd = Commands.fromKey(session.getPendingCommandKey());
                 String kbdName = cmd != null ? cmd.getNextKeyboard() : "main";
                 session.setPendingCommandKey(null);
                 session.setInputs(null);
                 session.setInputStep(null);
-                KeyboardType kbdType = KeyboardType.fromKey(kbdName);
-                KeyboardWrapper keyboardWrapper = kbdType != null ? kbdType.getKeyboard() : KeyboardType.MAIN.getKeyboard();
+                Keyboards kbdType = Keyboards.fromKey(kbdName);
+                KeyboardWrapper keyboardWrapper = kbdType != null ? kbdType.getKeyboard() : Keyboards.MAIN.getKeyboard();
                 log.info("User {} cancelled input, returning to keyboard: {}", userId, kbdName);
                 editMessage(update.getCallbackQuery().getMessage().getChatId(),
                         update.getCallbackQuery().getMessage().getMessageId(),
@@ -139,14 +137,14 @@ public class MagicBot extends AbilityBot implements BotFacade {
 
         if (data != null && data.startsWith("kbd:")) {
             String kbdName = data.substring("kbd:".length());
-            KeyboardType kbdType = KeyboardType.fromKey(kbdName);
-            KeyboardWrapper keyboardWrapper = kbdType != null ? kbdType.getKeyboard() : KeyboardType.MAIN.getKeyboard();
+            Keyboards kbdType = Keyboards.fromKey(kbdName);
+            KeyboardWrapper keyboardWrapper = kbdType != null ? kbdType.getKeyboard() : Keyboards.MAIN.getKeyboard();
 //            UserSession s = sessions.computeIfAbsent(userId, k -> new UserSession());
             log.info("User {} selected keyboard: {}", userId, kbdName);
             editMessage(update.getCallbackQuery().getMessage().getChatId(),update.getCallbackQuery().getMessage().getMessageId(), keyboardWrapper.getText(),keyboardWrapper.getKeyboard());
         }else if(data != null && data.startsWith("cmd:")){
             String cmdName = data.substring("cmd:".length());
-            Command command = CommandType.fromKey(cmdName);
+            Command command = Commands.fromKey(cmdName);
             if(command.needsInput()){
                 UserSession userSession = sessions.get(userId);
                 userSession.setPendingCommandKey(cmdName);
@@ -173,7 +171,7 @@ public class MagicBot extends AbilityBot implements BotFacade {
                 .privacy(PUBLIC)
                 .locality(USER)
                 .action(ctx -> {
-                    KeyboardWrapper kb = KeyboardType.MAIN.getKeyboard();
+                    KeyboardWrapper kb = Keyboards.MAIN.getKeyboard();
                     SendMessage msg = SendMessage.builder()
                             .chatId(ctx.chatId())
                             .text(kb.getText())

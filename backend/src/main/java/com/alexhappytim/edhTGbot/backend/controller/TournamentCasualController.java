@@ -2,6 +2,7 @@ package com.alexhappytim.edhTGbot.backend.controller;
 
 import com.alexhappytim.edhTGbot.backend.model.*;
 import com.alexhappytim.edhTGbot.backend.repository.TournamentCasualRepository;
+import com.alexhappytim.edhTGbot.backend.repository.TournamentRepository;
 import com.alexhappytim.edhTGbot.backend.repository.UserRepository;
 import com.alexhappytim.edhTGbot.backend.service.CasualTournamentService;
 import com.alexhappytim.mtg.dto.*;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TournamentCasualController {
     private final TournamentCasualRepository tournamentCasualRepository;
+    private final TournamentRepository tournamentRepository;
     private final UserRepository userRepository;
     private final CasualTournamentService casualTournamentService;
 
@@ -30,7 +32,16 @@ public class TournamentCasualController {
         }
         User owner = userRepository.findByTelegramId(request.getOwnerId())
                 .orElseThrow(() -> new IllegalArgumentException("User not found. Please register first using /register"));
+
+        // Create parent Tournament entity with type
+        Tournament parent = Tournament.builder()
+                .type(TournamentType.CASUAL)
+                .build();
+        parent = tournamentRepository.save(parent);
+
         TournamentCasual tournament = TournamentCasual.builder()
+                .id(parent.getId())
+                .tournament(parent)
                 .name(request.getName())
                 .owner(owner)
                 .build();
@@ -39,7 +50,7 @@ public class TournamentCasualController {
     }
 
     @PostMapping("/{id}/join")
-    public ResponseEntity<UserDTO> addUser(@PathVariable Long id, @RequestBody JoinTournamentRequest request) {
+    public ResponseEntity<UserDTO> addUser(@PathVariable String id, @RequestBody JoinTournamentRequest request) {
         Optional<TournamentCasual> tournamentOpt = tournamentCasualRepository.findById(id);
         if (tournamentOpt.isEmpty()) {
             throw new IllegalArgumentException("Tournament not found");
@@ -77,61 +88,61 @@ public class TournamentCasualController {
     }
 
     @PostMapping("/{id}/start-round")
-    public ResponseEntity<List<CasualGroupDTO>> startNextRound(@PathVariable Long id) {
+    public ResponseEntity<List<CasualGroupDTO>> startNextRound(@PathVariable String id) {
         List<CasualGroup> groups = casualTournamentService.startRound(id);
         return ResponseEntity.ok(groups.stream().map(this::toGroupDTO).collect(Collectors.toList()));
     }
 
     @PostMapping("/{id}/reshuffle")
-    public ResponseEntity<List<CasualGroupDTO>> reshuffleReady(@PathVariable Long id, @RequestParam Long adminId) {
+    public ResponseEntity<List<CasualGroupDTO>> reshuffleReady(@PathVariable String id, @RequestParam Long adminId) {
         List<CasualGroup> groups = casualTournamentService.reshuffleReady(id, adminId);
         return ResponseEntity.ok(groups.stream().map(this::toGroupDTO).collect(Collectors.toList()));
     }
 
     @PostMapping("/{id}/ready")
-    public ResponseEntity<Void> markUserReady(@PathVariable Long id, @RequestParam Integer playerPosition, @RequestParam Long adminId) {
+    public ResponseEntity<Void> markUserReady(@PathVariable String id, @RequestParam Integer playerPosition, @RequestParam Long adminId) {
         casualTournamentService.markUserReady(id, playerPosition, adminId);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/self-ready")
-    public ResponseEntity<Void> markSelfReady(@PathVariable Long id, @RequestParam Long userId) {
+    public ResponseEntity<Void> markSelfReady(@PathVariable String id, @RequestParam Long userId) {
         casualTournamentService.markSelfReady(id, userId);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/not-ready")
-    public ResponseEntity<Void> markUserNotReady(@PathVariable Long id, @RequestParam Integer playerPosition, @RequestParam Long adminId) {
+    public ResponseEntity<Void> markUserNotReady(@PathVariable String id, @RequestParam Integer playerPosition, @RequestParam Long adminId) {
         casualTournamentService.markUserNotReady(id, playerPosition, adminId);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/ready-all")
-    public ResponseEntity<Void> markAllReady(@PathVariable Long id, @RequestParam Long adminId) {
+    public ResponseEntity<Void> markAllReady(@PathVariable String id, @RequestParam Long adminId) {
         casualTournamentService.markAllReady(id, adminId);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/ready-group")
-    public ResponseEntity<Void> markGroupReady(@PathVariable Long id, @RequestParam Integer groupNumber, @RequestParam Long adminId) {
+    public ResponseEntity<Void> markGroupReady(@PathVariable String id, @RequestParam Integer groupNumber, @RequestParam Long adminId) {
         casualTournamentService.markGroupReady(id, groupNumber, adminId);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}/ready-users")
-    public ResponseEntity<List<UserDTO>> getReadyUsers(@PathVariable Long id) {
+    public ResponseEntity<List<UserDTO>> getReadyUsers(@PathVariable String id) {
         List<User> readyUsers = casualTournamentService.getReadyUsers(id);
         return ResponseEntity.ok(readyUsers.stream().map(this::toUserDTO).collect(Collectors.toList()));
     }
 
     @GetMapping("/{id}/groups")
-    public ResponseEntity<List<CasualGroupDTO>> getGroups(@PathVariable Long id) {
+    public ResponseEntity<List<CasualGroupDTO>> getGroups(@PathVariable String id) {
         List<CasualGroup> groups = casualTournamentService.getGroups(id);
         return ResponseEntity.ok(groups.stream().map(this::toGroupDTO).collect(Collectors.toList()));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TournamentCasualDTO> getTournament(@PathVariable Long id) {
+    public ResponseEntity<TournamentCasualDTO> getTournament(@PathVariable String id) {
         TournamentCasual tournament = tournamentCasualRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
         return ResponseEntity.ok(toDTO(tournament));

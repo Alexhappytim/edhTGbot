@@ -12,14 +12,14 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class SwissTournamentService {
-    private final TournamentRepository tournamentRepository;
+    private final SwissTournamentRepository swissTournamentRepository;
     private final ParticipantRepository participantRepository;
     private final RoundRepository roundRepository;
     private final MatchRepository matchRepository;
 
     @Transactional
-    public void startNextRound(Long tournamentId) {
-        Tournament tournament = tournamentRepository.findById(tournamentId)
+    public void startNextRound(String tournamentId) {
+        SwissTournament tournament = swissTournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));
         if (tournament.getStatus() == TournamentStatus.COMPLETED) {
             throw new IllegalStateException("Tournament already completed");
@@ -81,10 +81,10 @@ public class SwissTournamentService {
         }
         tournament.getRounds().add(round);
         tournament.setStatus(TournamentStatus.IN_PROGRESS);
-        tournamentRepository.save(tournament);
+        swissTournamentRepository.save(tournament);
     }
 
-    public boolean havePlayedBefore(Participant a, Participant b, Tournament tournament) {
+    public boolean havePlayedBefore(Participant a, Participant b, SwissTournament tournament) {
         for (Round round : tournament.getRounds()) {
             for (Match match : round.getMatches()) {
                 if (match.getPlayerA() != null && match.getPlayerB() != null) {
@@ -122,23 +122,23 @@ public class SwissTournamentService {
         Round round = match.getRound();
         boolean allDone = round.getMatches().stream().allMatch(Match::isCompleted);
         if (allDone) {
-            Tournament tournament = round.getTournament();
+            SwissTournament tournament = round.getTournament();
             // If last round, mark as completed
             if (isLastRound(tournament)) {
                 tournament.setStatus(TournamentStatus.COMPLETED);
-                tournamentRepository.save(tournament);
+                swissTournamentRepository.save(tournament);
             }
         }
     }
 
-    public boolean isLastRound(Tournament tournament) {
+    public boolean isLastRound(SwissTournament tournament) {
         int numPlayers = tournament.getParticipants().size();
         int maxRounds = (int) Math.ceil(Math.log(numPlayers) / Math.log(2));
         return tournament.getRounds().size() >= maxRounds;
     }
 
-    public List<Participant> getStandings(Long tournamentId) {
-        Tournament tournament = tournamentRepository.findById(tournamentId)
+    public List<Participant> getStandings(String tournamentId) {
+        SwissTournament tournament = swissTournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));
         List<Participant> participants = new ArrayList<>(tournament.getParticipants());
         participants.sort(Comparator.comparingInt(Participant::getPoints).reversed()
@@ -147,8 +147,8 @@ public class SwissTournamentService {
         return participants;
     }
 
-    public List<Match> getCurrentPairings(Long tournamentId) {
-        Tournament tournament = tournamentRepository.findById(tournamentId)
+    public List<Match> getCurrentPairings(String tournamentId) {
+        SwissTournament tournament = swissTournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));
         if (tournament.getRounds().isEmpty()) return Collections.emptyList();
         Round lastRound = tournament.getRounds().get(tournament.getRounds().size() - 1);

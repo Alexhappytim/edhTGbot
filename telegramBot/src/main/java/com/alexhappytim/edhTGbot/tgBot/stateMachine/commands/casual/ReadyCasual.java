@@ -1,6 +1,7 @@
-package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands;
+package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.casual;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 public class ReadyCasual extends Command {

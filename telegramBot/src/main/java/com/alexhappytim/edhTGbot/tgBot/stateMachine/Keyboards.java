@@ -1,14 +1,9 @@
 package com.alexhappytim.edhTGbot.tgBot.stateMachine;
 
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.CommandType;
 import lombok.Getter;
 
-/**
- * Enum containing all available keyboards.
- * Each enum constant holds its keyboard definition.
- */
 @Getter
-public enum KeyboardType {
+public enum Keyboards {
     MAIN(KeyboardBuilder.build(
             "Выбери действие:",
             "Зарегистрироваться:cmd:register",
@@ -65,16 +60,13 @@ public enum KeyboardType {
     ;
     private final KeyboardWrapper keyboard;
 
-    KeyboardType(KeyboardWrapper keyboard) {
+    Keyboards(KeyboardWrapper keyboard) {
         this.keyboard = keyboard;
     }
 
-    /**
-     * Get keyboard by string key (for backward compatibility).
-     */
-    public static KeyboardType fromKey(String key) {
+    public static Keyboards fromKey(String key) {
         if (key == null) return null;
-        for (KeyboardType type : values()) {
+        for (Keyboards type : values()) {
             if (type.name().equalsIgnoreCase(key)) {
                 return type;
             }

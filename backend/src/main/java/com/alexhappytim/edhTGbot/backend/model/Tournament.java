@@ -2,36 +2,24 @@ package com.alexhappytim.edhTGbot.backend.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.util.*;
+import org.hibernate.annotations.GenericGenerator;
 
 @Entity
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@GenericGenerator(
+        name = "code8-id",
+        strategy = "com.alexhappytim.edhTGbot.backend.model.TournamentCodeIDGenerator"
+)
 public class Tournament {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false)
-    private String name;
-
-    @ManyToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "user_id")
-    private User owner;
-
-    @Column(nullable = false)
-    private int maxPlayers;
+    @GeneratedValue(generator = "code8-id")
+    private String id;
 
     @Enumerated(EnumType.STRING)
-    private TournamentStatus status;
-
-    @Builder.Default
-    @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Participant> participants = new ArrayList<>();
-
-    @Builder.Default
-    @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Round> rounds = new ArrayList<>();
+    @Column(nullable = false)
+    private TournamentType type;
 }
+

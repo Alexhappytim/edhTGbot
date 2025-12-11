@@ -1,12 +1,13 @@
-package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands;
+package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.casual;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
-public class AdminReady extends Command {
+public class AdminNotReady extends Command {
 
-    public AdminReady() {
-        super("admin_ready", 2, "tournament_admin_casual",
+    public AdminNotReady() {
+        super("admin_not_ready", 2, "tournament_admin_casual",
               "Введите ID казуал турнира", 
               "Введите номер игрока в списке (используйте /casualinfo для просмотра)");
     }
@@ -18,17 +19,17 @@ public class AdminReady extends Command {
         String tournamentId = bot.getSession(adminId).getInputs().get(0);
         String playerPosition = bot.getSession(adminId).getInputs().get(1);
         
-        bot.getLogger().info("Admin {} marking player #{} as ready in tournament {}", 
+        bot.getLogger().info("Admin {} marking player #{} as not ready in tournament {}", 
                 update.getMessage().getFrom().getUserName(), playerPosition, tournamentId);
         try {
             String url = bot.getRestBaseUrl() + "/tournamentsCasual/" + tournamentId + 
-                         "/ready?playerPosition=" + playerPosition + "&adminId=" + adminId;
+                         "/not-ready?playerPosition=" + playerPosition + "&adminId=" + adminId;
             bot.getRestTemplate().postForEntity(url, null, String.class);
-            bot.getLogger().info("Player #{} marked as ready by admin {} in tournament {}", 
+            bot.getLogger().info("Player #{} marked as not ready by admin {} in tournament {}", 
                     playerPosition, update.getMessage().getFrom().getUserName(), tournamentId);
-            bot.sendMessage(chatId, "Игрок #" + playerPosition + " отмечен как готовый!");
+            bot.sendMessage(chatId, "Игрок #" + playerPosition + " отмечен как не готовый!");
         } catch (Exception e) {
-            bot.getLogger().error("Admin ready failed: {}", e.getMessage(), e);
+            bot.getLogger().error("Admin not ready failed: {}", e.getMessage(), e);
             bot.sendMessage(chatId, "Ошибка: " + e.getMessage());
         }
     }

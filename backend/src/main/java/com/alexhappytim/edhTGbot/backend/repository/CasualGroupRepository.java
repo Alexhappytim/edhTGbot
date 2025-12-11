@@ -6,6 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface CasualGroupRepository extends JpaRepository<CasualGroup, Long> {
-    List<CasualGroup> findByTournamentId(Long tournamentId);
-    void deleteByTournamentId(Long tournamentId);
+    List<CasualGroup> findByTournamentId(String tournamentId);
+    void deleteByTournamentId(String tournamentId);
 }

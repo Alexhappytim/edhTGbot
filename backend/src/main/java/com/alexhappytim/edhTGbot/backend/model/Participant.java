@@ -19,7 +19,7 @@ public class Participant {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tournament_id")
-    private Tournament tournament;
+    private SwissTournament tournament;
 
     private int points;
     private int tieBreaker;

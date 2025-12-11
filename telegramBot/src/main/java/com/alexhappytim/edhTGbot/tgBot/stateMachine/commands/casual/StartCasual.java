@@ -1,14 +1,15 @@
-package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands;
+package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.casual;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.ResponseEntity;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
-public class CasualGroups extends Command {
+public class StartCasual extends Command {
 
-    public CasualGroups() {
-        super("casual_groups", 1, "tournament_admin_casual", "Введите ID казуал турнира");
+    public StartCasual() {
+        super("start_casual", 1, "tournament_admin_casual", "Введите ID казуал турнира");
     }
 
     @Override
@@ -17,15 +18,16 @@ public class CasualGroups extends Command {
         long chatId = update.getMessage().getChatId();
         String tournamentId = bot.getSession(userId).getInputs().get(0);
         
-        bot.getLogger().debug("User {} requesting groups for tournament {}", 
+        bot.getLogger().info("User {} starting round for casual tournament {}", 
                 update.getMessage().getFrom().getUserName(), tournamentId);
         try {
-            ResponseEntity<String> response = bot.getRestTemplate().getForEntity(
-                    bot.getRestBaseUrl() + "/tournamentsCasual/" + tournamentId + "/groups", String.class);
+            ResponseEntity<String> response = bot.getRestTemplate().postForEntity(
+                    bot.getRestBaseUrl() + "/tournamentsCasual/" + tournamentId + "/start-round",
+                    null, String.class);
             JsonNode groups = bot.getObjectMapper().readTree(response.getBody());
-            bot.getLogger().debug("Retrieved {} groups for tournament {}", groups.size(), tournamentId);
+            bot.getLogger().info("Round started for tournament {}, {} groups created", tournamentId, groups.size());
             
-            StringBuilder sb = new StringBuilder("Текущие группы:\n");
+            StringBuilder sb = new StringBuilder("Раунд начался! Группы:\n");
             for (JsonNode group : groups) {
                 sb.append("Группа ").append(group.get("groupNumber").asInt()).append(": ");
                 for (JsonNode player : group.get("players")) {
@@ -36,8 +38,8 @@ public class CasualGroups extends Command {
             }
             bot.sendMessage(chatId, sb.toString());
         } catch (Exception e) {
-            bot.getLogger().error("Get groups failed for tournament {}: {}", tournamentId, e.getMessage(), e);
-            bot.sendMessage(chatId, "Ошибка получения групп: " + e.getMessage());
+            bot.getLogger().error("Start round failed for tournament {}: {}", tournamentId, e.getMessage(), e);
+            bot.sendMessage(chatId, "Ошибка начала раунда: " + e.getMessage());
         }
     }
 }

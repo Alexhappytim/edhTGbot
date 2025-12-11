@@ -14,8 +14,12 @@ import java.util.List;
 @Builder
 public class TournamentCasual {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
+
+    @OneToOne
+    @MapsId
+    @JoinColumn(name = "tournament_id", nullable = false, unique = true)
+    private Tournament tournament;
 
     @Column(nullable = false)
     private String name;

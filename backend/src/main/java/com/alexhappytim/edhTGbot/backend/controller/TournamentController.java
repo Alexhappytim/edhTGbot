@@ -3,7 +3,9 @@ package com.alexhappytim.edhTGbot.backend.controller;
 import com.alexhappytim.edhTGbot.backend.model.*;
 import com.alexhappytim.edhTGbot.backend.repository.*;
 import com.alexhappytim.edhTGbot.backend.service.SwissTournamentService;
+import com.alexhappytim.edhTGbot.backend.service.CasualTournamentService;
 import com.alexhappytim.mtg.dto.*;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,10 +16,14 @@ import java.util.*;
 @RequiredArgsConstructor
 public class TournamentController {
     private final TournamentRepository tournamentRepository;
+    private final SwissTournamentRepository swissTournamentRepository;
+    private final TournamentCasualRepository casualRepository;
     private final UserRepository userRepository;
     private final ParticipantRepository participantRepository;
     private final SwissTournamentService swissTournamentService;
-
+    private final CasualTournamentService casualTournamentService;
+    //TODO FUCKING REWRITE THIS SHIT
+    @Transactional
     @PostMapping
     public ResponseEntity<TournamentDTO> createTournament(@RequestBody CreateTournamentRequest request) {
         if (request.getName() == null || request.getName().isBlank()) {
@@ -26,13 +32,23 @@ public class TournamentController {
         if (request.getMaxPlayers() < 2) {
             throw new IllegalArgumentException("Tournament must have at least 2 players");
         }
-        Tournament tournament = Tournament.builder()
+        User owner = userRepository.findByTelegramId(request.getOwnerId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found. Please register first using /register"));
+        // Create parent Tournament entity with type
+        Tournament parent = Tournament.builder()
+                .type(TournamentType.SWISS)
+                .build();
+        parent = tournamentRepository.save(parent);
+
+        // Create SwissTournament with reference to parent
+        SwissTournament tournament = SwissTournament.builder()
+                .tournament(parent)
                 .name(request.getName())
                 .maxPlayers(request.getMaxPlayers())
                 .status(TournamentStatus.REGISTRATION)
-                .owner(userRepository.findByTelegramId(request.getOwnerId()).get())
+                .owner(owner)
                 .build();
-        tournament = tournamentRepository.save(tournament);
+        tournament = swissTournamentRepository.save(tournament);
         TournamentDTO dto = new TournamentDTO();
         dto.setId(tournament.getId());
         dto.setName(tournament.getName());
@@ -43,74 +59,82 @@ public class TournamentController {
     }
 
     @PostMapping("/{id}/join")
-    public ResponseEntity<ParticipantDTO> addParticipant(@PathVariable Long id, @RequestBody JoinTournamentRequest request) {
-//        Optional<Tournament> tournamentOpt = tournamentRepository.findById(id);
-//        Optional<User> userOpt = userRepository.findByTelegramId(request.getUserId());
-//        if (tournamentOpt.isEmpty()) {
-//            throw new IllegalArgumentException("Tournament not found");
-//        }
-//        if (userOpt.isEmpty()) {
-//            throw new IllegalArgumentException("User not found");
-//        }
-//        if (request.getIsTemporary()){
-//           if(!Objects.equals(tournamentOpt.get().getOwner().getId(), userOpt.get().getId())){
-//               throw new IllegalArgumentException("It is not your tournament");
-//           }
-//        }
-//        Tournament tournament = tournamentOpt.get();
-//        User user = userOpt.get();
-//        if (tournament.getStatus() != TournamentStatus.REGISTRATION) {
-//            throw new IllegalStateException("Cannot join: Tournament is not in registration phase");
-//        }
-//        if (tournament.getParticipants().stream().anyMatch(p -> p.getUser().getId().equals(user.getId())) && !request.getIsTemporary()) {
-//            throw new IllegalStateException("User already registered in this tournament");
-//        }
-////        if (tournament.getParticipants().stream().anyMatch(p -> p.getUser().getDisplayName().equals(user.getId())) && !request.getIsTryingToAdd()) {
-////            throw new IllegalStateException("User already registered in this tournament");
-////        }
-//        if (tournament.getParticipants().size() >= tournament.getMaxPlayers()) {
-//            throw new IllegalStateException("Tournament is full");
-//        }
-//        Participant participant = Participant.builder()
-//                .tournament(tournament)
-//                .points(0)
-//                .tieBreaker(0)
-//                .build();
-//        if (!request.getIsTryingToAdd()){
-//            participant.setUser(user);
-//        }
-//        else {
-//            User tempUser = User.builder()
-//                    .userTag("")
-//                    .displayName(request.getParticipantName())
-//                    .telegramId((long) -1)
-//                    .chatId((long) -1)
-//                    .build();
-//            tempUser = userRepository.save(tempUser);
-//            participant.setUser(tempUser);
-//        }
-//        participant = participantRepository.save(participant);
-//        ParticipantDTO dto = new ParticipantDTO();
-//        UserDTO userDTO = new UserDTO();
-//        userDTO.setId(user.getId());
-//        userDTO.setUserTag(user.getUserTag());
-//        userDTO.setDisplayName(user.getDisplayName());
-//        dto.setId(participant.getId());
-//        dto.setUser(userDTO);
-//        dto.setPoints(0);
-//        dto.setTieBreaker(0);
-        return ResponseEntity.ok(new ParticipantDTO());
+    public ResponseEntity<JoinTournamentResponse> joinTournament(@PathVariable String id, @RequestBody JoinTournamentRequest request) {
+        // Look up the parent Tournament to determine type
+        Tournament parent = tournamentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
+
+        JoinTournamentResponse response = new JoinTournamentResponse();
+        response.setTournamentId(id);
+        response.setTournamentType(parent.getType().name());
+
+        if (parent.getType() == TournamentType.SWISS) {
+            // Delegate to Swiss tournament join logic
+            SwissTournament tournament = swissTournamentRepository.findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("Swiss tournament details not found"));
+
+            User user = userRepository.findByTelegramId(request.getUserId())
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+            if (tournament.getStatus() != TournamentStatus.REGISTRATION) {
+                throw new IllegalStateException("Cannot join: Tournament is not in registration phase");
+            }
+
+            if (tournament.getParticipants().stream().anyMatch(p -> p.getUser().getId().equals(user.getId()))) {
+                throw new IllegalStateException("User already registered in this tournament");
+            }
+
+            if (tournament.getParticipants().size() >= tournament.getMaxPlayers()) {
+                throw new IllegalStateException("Tournament is full");
+            }
+
+            Participant participant = Participant.builder()
+                    .tournament(tournament)
+                    .user(user)
+                    .points(0)
+                    .tieBreaker(0)
+                    .build();
+            participant = participantRepository.save(participant);
+            tournament.getParticipants().add(participant);
+            swissTournamentRepository.save(tournament);
+
+            response.setJoined(true);
+            response.setMessage("Successfully joined Swiss tournament");
+
+        } else if (parent.getType() == TournamentType.CASUAL) {
+            // Delegate to Casual tournament join logic
+            TournamentCasual tournament = casualRepository.findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("Casual tournament details not found"));
+
+            User user = userRepository.findByTelegramId(request.getUserId())
+                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+            if (tournament.getUsers().contains(user)) {
+                throw new IllegalStateException("User already registered in this tournament");
+            }
+
+            tournament.getUsers().add(user);
+            casualRepository.save(tournament);
+
+            response.setJoined(true);
+            response.setMessage("Successfully joined Casual tournament");
+
+        } else {
+            throw new IllegalArgumentException("Unknown tournament type");
+        }
+
+        return ResponseEntity.ok(response);
     }
 
 
     @PostMapping("/{id}/start-round")
-    public ResponseEntity<Void> startNextRound(@PathVariable Long id) {
+    public ResponseEntity<Void> startNextRound(@PathVariable String id) {
         swissTournamentService.startNextRound(id);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/submit")
-    public ResponseEntity<Void> submitMatchResult(@PathVariable Long id, @RequestBody SubmitMatchResultRequest request) {
+    public ResponseEntity<Void> submitMatchResult(@PathVariable String id, @RequestBody SubmitMatchResultRequest request) {
         if (request.getMatchId() == null) {
             throw new IllegalArgumentException("Match ID is required");
         }
@@ -122,7 +146,7 @@ public class TournamentController {
     }
 
     @GetMapping("/{id}/standings")
-    public ResponseEntity<List<StandingDTO>> getStandings(@PathVariable Long id) {
+    public ResponseEntity<List<StandingDTO>> getStandings(@PathVariable String id) {
         List<Participant> standings = swissTournamentService.getStandings(id);
         List<StandingDTO> result = new ArrayList<>();
         int rank = 1;
@@ -139,7 +163,7 @@ public class TournamentController {
     }
 
     @GetMapping("/{id}/pairings")
-    public ResponseEntity<List<PairingDTO>> getCurrentPairings(@PathVariable Long id) {
+    public ResponseEntity<List<PairingDTO>> getCurrentPairings(@PathVariable String id) {
         List<Match> matches = swissTournamentService.getCurrentPairings(id);
         List<PairingDTO> result = new ArrayList<>();
         for (Match m : matches) {

@@ -25,7 +25,7 @@ public class CasualTournamentService {
      * Start a round: mark all users as ready, shuffle into groups of 4, then mark all as not ready.
      */
     @Transactional
-    public List<CasualGroup> startRound(Long tournamentId) {
+    public List<CasualGroup> startRound(String tournamentId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
 
@@ -57,7 +57,7 @@ public class CasualTournamentService {
      * Reshuffle only ready users into new groups.
      */
     @Transactional
-    public List<CasualGroup> reshuffleReady(Long tournamentId, Long adminTelegramId) {
+    public List<CasualGroup> reshuffleReady(String tournamentId, Long adminTelegramId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
 
@@ -97,7 +97,7 @@ public class CasualTournamentService {
      * @param requesterTelegramId Telegram ID of the requester
      */
     @Transactional
-    public void markUserReady(Long tournamentId, Integer playerPosition, Long requesterTelegramId) {
+    public void markUserReady(String tournamentId, Integer playerPosition, Long requesterTelegramId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
 
@@ -124,7 +124,7 @@ public class CasualTournamentService {
      * Mark self as ready (by user themselves).
      */
     @Transactional
-    public void markSelfReady(Long tournamentId, Long userTelegramId) {
+    public void markSelfReady(String tournamentId, Long userTelegramId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
 
@@ -146,7 +146,7 @@ public class CasualTournamentService {
      * @param playerPosition 1-based position of player in tournament
      */
     @Transactional
-    public void markUserNotReady(Long tournamentId, Integer playerPosition, Long adminTelegramId) {
+    public void markUserNotReady(String tournamentId, Integer playerPosition, Long adminTelegramId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
 
@@ -168,7 +168,7 @@ public class CasualTournamentService {
      * Mark all users as ready for shuffle.
      */
     @Transactional
-    public void markAllReady(Long tournamentId, Long adminTelegramId) {
+    public void markAllReady(String tournamentId, Long adminTelegramId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
 
@@ -186,7 +186,7 @@ public class CasualTournamentService {
      * @param groupNumber The group number (1-based)
      */
     @Transactional
-    public void markGroupReady(Long tournamentId, Integer groupNumber, Long adminTelegramId) {
+    public void markGroupReady(String tournamentId, Integer groupNumber, Long adminTelegramId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
 
@@ -211,7 +211,7 @@ public class CasualTournamentService {
     /**
      * Get all ready users in a tournament.
      */
-    public List<User> getReadyUsers(Long tournamentId) {
+    public List<User> getReadyUsers(String tournamentId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
         return tournament.getUsersReady();
@@ -220,7 +220,7 @@ public class CasualTournamentService {
     /**
      * Get all groups in a tournament.
      */
-    public List<CasualGroup> getGroups(Long tournamentId) {
+    public List<CasualGroup> getGroups(String tournamentId) {
         return casualGroupRepository.findByTournamentId(tournamentId);
     }
 

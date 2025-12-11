@@ -5,7 +5,7 @@ import java.util.List;
 
 @Data
 public class TournamentCasualDTO {
-    private Long id;
+    private String id;
     private String name;
     private UserDTO owner;
     private List<UserDTO> users;

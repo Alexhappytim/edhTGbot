@@ -1,13 +1,12 @@
 package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands;
 
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.casual.*;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.swiss.*;
+
 import lombok.Getter;
 
-/**
- * Enum containing all available commands.
- * Each enum constant creates its command instance in the constructor.
- */
 @Getter
-public enum CommandType {
+public enum Commands {
     // Registration
     REGISTER(new Register()),
     
@@ -34,17 +33,14 @@ public enum CommandType {
 
     private final Command command;
 
-    CommandType(Command command) {
+    Commands(Command command) {
         this.command = command;
     }
 
-    /**
-     * Get command by string key.
-     */
     public static Command fromKey(String key) {
         if (key == null) return null;
         
-        for (CommandType type : values()) {
+        for (Commands type : values()) {
             if (type.command.getKey().equalsIgnoreCase(key)) {
                 return type.command;
             }

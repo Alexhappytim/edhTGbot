@@ -1,6 +1,7 @@
-package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands;
+package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.swiss;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
 import com.alexhappytim.mtg.dto.JoinTournamentRequest;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;

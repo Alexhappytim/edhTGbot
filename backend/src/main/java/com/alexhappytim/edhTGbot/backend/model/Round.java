@@ -18,7 +18,7 @@ public class Round {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tournament_id")
-    private Tournament tournament;
+    private SwissTournament tournament;
 
     @Builder.Default
     @OneToMany(mappedBy = "round", cascade = CascadeType.ALL, orphanRemoval = true)
