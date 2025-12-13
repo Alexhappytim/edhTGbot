@@ -2,6 +2,7 @@ package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.swiss;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.TournamentIdInputStrategy;
 import com.alexhappytim.mtg.dto.JoinTournamentRequest;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -12,15 +13,16 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class JoinTournament extends Command {
 
     public JoinTournament() {
-        super("join_tournament", 1, "main", "Введите ID турнира");
+        super("join_tournament", "main", 
+              new TournamentIdInputStrategy("Введите ID турнира"));
     }
 
     @Override
     public void execute(BotFacade bot, Update update) {
-        long userId = update.getMessage().getFrom().getId();
-        long chatId = update.getMessage().getChatId();
-        String tournamentId = bot.getSession(userId).getInputs().get(0);
-        String username = update.getMessage().getFrom().getUserName();
+        long userId = getUserId(update);
+        long chatId = getChatId(update);
+        String username = getUsername(update);
+        String tournamentId = bot.getSession(userId).getTournamentId();
         
         bot.getLogger().info("User {} joining tournament: {}", username, tournamentId);
         try {

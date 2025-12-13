@@ -2,25 +2,28 @@ package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.casual;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.SimpleInputStrategy;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.TournamentIdInputStrategy;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 public class ReadyGroup extends Command {
 
     public ReadyGroup() {
-        super("ready_group", 2, "tournament_admin_casual",
-              "Введите ID казуал турнира", 
-              "Введите номер группы (используйте /casualgroups для просмотра)");
+        super("ready_group", "tournament_admin_casual",
+              new TournamentIdInputStrategy("Введите ID казуал турнира"), 
+              new SimpleInputStrategy("Введите номер группы (используйте /casualgroups для просмотра)"));
     }
 
     @Override
     public void execute(BotFacade bot, Update update) {
-        long adminId = update.getMessage().getFrom().getId();
-        long chatId = update.getMessage().getChatId();
+        long adminId = getUserId(update);
+        long chatId = getChatId(update);
+        String username = getUsername(update);
         String tournamentId = bot.getSession(adminId).getInputs().get(0);
         String groupNumber = bot.getSession(adminId).getInputs().get(1);
         
         bot.getLogger().info("Admin {} marking group #{} as ready in tournament {}", 
-                update.getMessage().getFrom().getUserName(), groupNumber, tournamentId);
+                username, groupNumber, tournamentId);
         try {
             String url = bot.getRestBaseUrl() + "/tournamentsCasual/" + tournamentId + 
                          "/ready-group?groupNumber=" + groupNumber + "&adminId=" + adminId;

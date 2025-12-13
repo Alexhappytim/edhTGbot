@@ -54,19 +54,19 @@ public class MagicBot extends AbilityBot implements BotFacade {
         this.onRegister();
         log.info("MagicBot initialized successfully");
     }
+
     @Override
     public void consume(Update update) {
         try {
             long userId = 0;
             if (update.hasCallbackQuery()) {
                 userId = update.getCallbackQuery().getFrom().getId();
-            }
-            else if(update.hasMessage()){
+            } else if (update.hasMessage()) {
                 userId = update.getMessage().getFrom().getId();
             }
 
             UserSession session = sessions.get(userId);
-            if(session == null){
+            if (session == null) {
                 sessions.put(userId, new UserSession(null, null, null, null));
                 session = sessions.get(userId);
             }
@@ -82,8 +82,24 @@ public class MagicBot extends AbilityBot implements BotFacade {
                     Command cmd = Commands.fromKey(session.getPendingCommandKey());
                     if (session.getInputs() == null) session.setInputs(new java.util.ArrayList<>());
                     if (session.getInputStep() == null) session.setInputStep(0);
-                    session.getInputs().add(update.getMessage().getText().trim());
+                    
+                    try {
+                        // Collect input using the strategy's validation (this also saves it to session)
+                        cmd.getInputStrategies()[session.getInputStep()].collectInput(this, update);
+                    } catch (Exception e) {
+                        log.error("Input validation failed: {}", e.getMessage());
+                        sendMessage(update.getMessage().getChatId(), "Ошибка: " + e.getMessage(), null);
+                        return;
+                    }
+                    
+                    // Move to next input step, skipping any inputs whose preconditions are already met
                     int nextStep = session.getInputStep() + 1;
+                    while (nextStep < cmd.getRequiredInputs() && cmd.getInputStrategies()[nextStep].isPreconditionMet(this, update)) {
+                        log.info("Skipping input step {} as precondition is already met", nextStep);
+                        session.getInputs().add(""); // Add placeholder for skipped input
+                        nextStep++;
+                    }
+                    
                     if (nextStep < cmd.getRequiredInputs()) {
                         session.setInputStep(nextStep);
                         InlineKeyboardRow cancelRow = new InlineKeyboardRow();
@@ -99,7 +115,7 @@ public class MagicBot extends AbilityBot implements BotFacade {
                         Keyboards kbdType = Keyboards.fromKey(kbdName);
                         KeyboardWrapper keyboardWrapper = kbdType != null ? kbdType.getKeyboard() : Keyboards.MAIN.getKeyboard();
                         log.info("User {} selected keyboard: {}", userId, kbdName);
-                        sendMessage(update.getMessage().getChatId(), keyboardWrapper.getText(),keyboardWrapper.getKeyboard());
+                        sendMessage(update.getMessage().getChatId(), keyboardWrapper.getText(), keyboardWrapper.getKeyboard());
                     }
                     return;
                 }
@@ -112,6 +128,7 @@ public class MagicBot extends AbilityBot implements BotFacade {
             e.printStackTrace();
         }
     }
+
     private void handleCallbackQuery(Update update) {
         long userId = update.getCallbackQuery().getFrom().getId();
         String data = update.getCallbackQuery().getData();
@@ -139,26 +156,54 @@ public class MagicBot extends AbilityBot implements BotFacade {
             String kbdName = data.substring("kbd:".length());
             Keyboards kbdType = Keyboards.fromKey(kbdName);
             KeyboardWrapper keyboardWrapper = kbdType != null ? kbdType.getKeyboard() : Keyboards.MAIN.getKeyboard();
-//            UserSession s = sessions.computeIfAbsent(userId, k -> new UserSession());
             log.info("User {} selected keyboard: {}", userId, kbdName);
-            editMessage(update.getCallbackQuery().getMessage().getChatId(),update.getCallbackQuery().getMessage().getMessageId(), keyboardWrapper.getText(),keyboardWrapper.getKeyboard());
-        }else if(data != null && data.startsWith("cmd:")){
+            editMessage(update.getCallbackQuery().getMessage().getChatId(), update.getCallbackQuery().getMessage().getMessageId(), keyboardWrapper.getText(), keyboardWrapper.getKeyboard());
+        } else if (data != null && data.startsWith("cmd:")) {
             String cmdName = data.substring("cmd:".length());
             Command command = Commands.fromKey(cmdName);
-            if(command.needsInput()){
-                UserSession userSession = sessions.get(userId);
+            UserSession userSession = sessions.get(userId);
+            
+            if (command.needsInput()) {
                 userSession.setPendingCommandKey(cmdName);
                 userSession.setInputs(new java.util.ArrayList<>());
                 userSession.setInputStep(0);
-                InlineKeyboardRow cancelRow = new InlineKeyboardRow();
-                cancelRow.add(InlineKeyboardButton.builder().text("Отмена").callbackData("cancel").build());
-                InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder().keyboard(java.util.List.of(cancelRow)).build();
-                editMessage(update.getCallbackQuery().getMessage().getChatId(),update.getCallbackQuery().getMessage().getMessageId(), command.getInputPrompt(0), kb);
-            }else{
+                
+                // Find first input step whose precondition is not met
+                int firstNeededStep = 0;
+                while (firstNeededStep < command.getRequiredInputs() && 
+                       command.getInputStrategies()[firstNeededStep].isPreconditionMet(this, update)) {
+                    log.info("Skipping input step {} as precondition is already met", firstNeededStep);
+                    userSession.getInputs().add(""); // Add placeholder for skipped input
+                    firstNeededStep++;
+                }
+                
+                if (firstNeededStep < command.getRequiredInputs()) {
+                    userSession.setInputStep(firstNeededStep);
+                    InlineKeyboardRow cancelRow = new InlineKeyboardRow();
+                    cancelRow.add(InlineKeyboardButton.builder().text("Отмена").callbackData("cancel").build());
+                    InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder().keyboard(java.util.List.of(cancelRow)).build();
+                    editMessage(update.getCallbackQuery().getMessage().getChatId(), 
+                                update.getCallbackQuery().getMessage().getMessageId(), 
+                                command.getInputPrompt(firstNeededStep), kb);
+                } else {
+                    // All inputs' preconditions met, execute immediately
+                    command.execute(this, update);
+                    userSession.setPendingCommandKey(null);
+                    userSession.setInputs(null);
+                    userSession.setInputStep(null);
+                    String kbdName = command.getNextKeyboard();
+                    Keyboards kbdType = Keyboards.fromKey(kbdName);
+                    KeyboardWrapper keyboardWrapper = kbdType != null ? kbdType.getKeyboard() : Keyboards.MAIN.getKeyboard();
+                    editMessage(update.getCallbackQuery().getMessage().getChatId(), 
+                                update.getCallbackQuery().getMessage().getMessageId(), 
+                                keyboardWrapper.getText(), keyboardWrapper.getKeyboard());
+                }
+            } else {
                 command.execute(this, update);
             }
         }
     }
+
     @Override
     public long creatorId() {
         return adminID;
@@ -221,6 +266,7 @@ public class MagicBot extends AbilityBot implements BotFacade {
                 .build());
 
     }
+
     public void sendMessage(long chatID, String text, InlineKeyboardMarkup kb) {
         silent.execute(SendMessage.builder()
                 .chatId(chatID)
@@ -230,7 +276,7 @@ public class MagicBot extends AbilityBot implements BotFacade {
 
     }
 
-    public void editMessage(long chatID,long messageID, String text, InlineKeyboardMarkup kb) {
+    public void editMessage(long chatID, long messageID, String text, InlineKeyboardMarkup kb) {
         silent.execute(
                 EditMessageText.builder()
                         .chatId(chatID)

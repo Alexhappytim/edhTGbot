@@ -1,6 +1,7 @@
 package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.SimpleInputStrategy;
 import org.springframework.http.HttpEntity;
 import org.springframework.web.client.ResourceAccessException;
 import org.telegram.telegrambots.abilitybots.api.objects.MessageContext;
@@ -17,19 +18,25 @@ import java.net.ConnectException;
 public class Register extends Command{
 
     public Register() {
-        super("register", 1, "main", "Введите имя, которое будет отображаться в турнирных таблицах");
+        super("register", "main", 
+              new SimpleInputStrategy("Введите имя, которое будет отображаться в турнирных таблицах"));
     }
 
     @Override
     public void execute(BotFacade bot, Update update) {
+            long userId = getUserId(update);
+            long chatId = getChatId(update);
+            String displayName = bot.getSession(userId).getInputs().get(0);
+            String username = getUsername(update);
+            
             bot.getLogger().info("User {} (chatId: {}) attempting to register with displayName: {}",
-                update.getMessage().getFrom(), update.getMessage().getChatId(), bot.getSession(update.getMessage().getFrom().getId()).getInputs().get(0));
+                username, chatId, displayName);
         try {
             CreateUserRequest request = new CreateUserRequest(
-                    update.getMessage().getFrom().getUserName(),
-                    bot.getSession(update.getMessage().getFrom().getId()).getInputs().get(0),
-                    update.getMessage().getFrom().getId(),
-                    update.getMessage().getChatId());
+                    username,
+                    displayName,
+                    userId,
+                    chatId);
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 

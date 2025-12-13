@@ -2,6 +2,7 @@ package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.casual;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.TournamentIdInputStrategy;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.ResponseEntity;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -9,17 +10,19 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class CasualGroups extends Command {
 
     public CasualGroups() {
-        super("casual_groups", 1, "tournament_admin_casual", "Введите ID казуал турнира");
+        super("casual_groups", "tournament_admin_casual", 
+              new TournamentIdInputStrategy("Введите ID казуал турнира"));
     }
 
     @Override
     public void execute(BotFacade bot, Update update) {
-        long userId = update.getMessage().getFrom().getId();
-        long chatId = update.getMessage().getChatId();
+        long userId = getUserId(update);
+        long chatId = getChatId(update);
+        String username = getUsername(update);
         String tournamentId = bot.getSession(userId).getInputs().get(0);
         
         bot.getLogger().debug("User {} requesting groups for tournament {}", 
-                update.getMessage().getFrom().getUserName(), tournamentId);
+                username, tournamentId);
         try {
             ResponseEntity<String> response = bot.getRestTemplate().getForEntity(
                     bot.getRestBaseUrl() + "/tournamentsCasual/" + tournamentId + "/groups", String.class);

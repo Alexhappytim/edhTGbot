@@ -2,6 +2,8 @@ package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.casual;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.SimpleInputStrategy;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.TournamentIdInputStrategy;
 import com.alexhappytim.mtg.dto.JoinTournamentRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.HttpEntity;
@@ -13,20 +15,21 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class AddToCasual extends Command {
 
     public AddToCasual() {
-        super("add_to_casual", 2, "tournament_admin_casual",
-              "Введите ID казуал турнира", 
-              "Введите имя игрока");
+        super("add_to_casual", "tournament_admin_casual",
+              new SimpleInputStrategy("Введите ID казуал турнира"), 
+              new SimpleInputStrategy("Введите имя игрока"));
     }
 
     @Override
     public void execute(BotFacade bot, Update update) {
-        long userId = update.getMessage().getFrom().getId();
-        long chatId = update.getMessage().getChatId();
+        long userId = getUserId(update);
+        long chatId = getChatId(update);
+        String username = getUsername(update);
         String tournamentId = bot.getSession(userId).getInputs().get(0);
         String displayName = bot.getSession(userId).getInputs().get(1);
         
         bot.getLogger().info("User {} adding temporary user {} to casual tournament {}", 
-                update.getMessage().getFrom().getUserName(), displayName, tournamentId);
+                username, displayName, tournamentId);
         try {
             JoinTournamentRequest request = new JoinTournamentRequest(userId, displayName, true);
             HttpHeaders headers = new HttpHeaders();

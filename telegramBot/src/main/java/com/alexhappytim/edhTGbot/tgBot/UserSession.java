@@ -8,7 +8,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 public class UserSession {
-    private Long tournamentId;
+    private String tournamentId;
     private String pendingCommandKey;
     private java.util.List<String> inputs;
     private Integer inputStep;

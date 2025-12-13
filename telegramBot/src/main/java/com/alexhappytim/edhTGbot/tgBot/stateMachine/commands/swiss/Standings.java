@@ -2,23 +2,26 @@ package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.swiss;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.TournamentIdInputStrategy;
 import org.springframework.http.ResponseEntity;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 public class Standings extends Command {
 
     public Standings() {
-        super("standings", 1, "main", "Введите ID турнира");
+        super("standings", "main", 
+              new TournamentIdInputStrategy("Введите ID турнира"));
     }
 
     @Override
     public void execute(BotFacade bot, Update update) {
-        long userId = update.getMessage().getFrom().getId();
-        long chatId = update.getMessage().getChatId();
-        String tournamentId = bot.getSession(userId).getInputs().get(0);
+        long userId = getUserId(update);
+        long chatId = getChatId(update);
+        String username = getUsername(update);
+        String tournamentId = bot.getSession(userId).getTournamentId();
         
         bot.getLogger().info("User {} requesting standings for tournament {}", 
-                update.getMessage().getFrom().getUserName(), tournamentId);
+                username, tournamentId);
         try {
             ResponseEntity<String> response = bot.getRestTemplate().getForEntity(
                     bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/standings", String.class);

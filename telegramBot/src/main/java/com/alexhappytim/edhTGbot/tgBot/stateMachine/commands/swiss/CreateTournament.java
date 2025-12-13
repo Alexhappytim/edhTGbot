@@ -2,6 +2,7 @@ package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.swiss;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.SimpleInputStrategy;
 import com.alexhappytim.mtg.dto.CreateTournamentRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.HttpEntity;
@@ -14,20 +15,21 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class CreateTournament extends Command {
 
     public CreateTournament() {
-        super("create_tournament", 2, "main",
-              "Введите название турнира", 
-              "Введите максимальное количество игроков");
+        super("create_tournament", "main",
+              new SimpleInputStrategy("Введите название турнира"),
+              new SimpleInputStrategy("Введите максимальное количество игроков"));
     }
 
     @Override
     public void execute(BotFacade bot, Update update) {
-        long userId = update.getMessage().getFrom().getId();
-        long chatId = update.getMessage().getChatId();
+        long userId = getUserId(update);
+        long chatId = getChatId(update);
+        String username = getUsername(update);
         String name = bot.getSession(userId).getInputs().get(0);
         String maxPlayersStr = bot.getSession(userId).getInputs().get(1);
         
         bot.getLogger().info("User {} creating tournament: name={}, maxPlayers={}", 
-                update.getMessage().getFrom().getUserName(), name, maxPlayersStr);
+                username, name, maxPlayersStr);
         try {
             int maxPlayers = Integer.parseInt(maxPlayersStr);
             CreateTournamentRequest request = new CreateTournamentRequest(name, maxPlayers, userId);

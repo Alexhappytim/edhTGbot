@@ -2,6 +2,7 @@ package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.casual;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.SimpleInputStrategy;
 import com.alexhappytim.mtg.dto.CreateTournamentRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.HttpEntity;
@@ -13,17 +14,19 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class CreateCasual extends Command {
 
     public CreateCasual() {
-        super("create_casual", 1, "tournament_admin_casual", "Введите название казуал турнира");
+        super("create_casual", "tournament_admin_casual", 
+              new SimpleInputStrategy("Введите название казуал турнира"));
     }
 
     @Override
     public void execute(BotFacade bot, Update update) {
-        long userId = update.getMessage().getFrom().getId();
-        long chatId = update.getMessage().getChatId();
+        long userId = getUserId(update);
+        long chatId = getChatId(update);
+        String username = getUsername(update);
         String name = bot.getSession(userId).getInputs().get(0);
         
         bot.getLogger().info("User {} creating casual tournament: {}", 
-                update.getMessage().getFrom().getUserName(), name);
+                username, name);
         try {
             CreateTournamentRequest request = new CreateTournamentRequest(name, 0, userId);
             HttpHeaders headers = new HttpHeaders();

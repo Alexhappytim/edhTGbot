@@ -2,25 +2,28 @@ package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.casual;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.SimpleInputStrategy;
+import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.TournamentIdInputStrategy;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 public class AdminReady extends Command {
 
     public AdminReady() {
-        super("admin_ready", 2, "tournament_admin_casual",
-              "Введите ID казуал турнира", 
-              "Введите номер игрока в списке (используйте /casualinfo для просмотра)");
+        super("admin_ready", "tournament_admin_casual",
+              new TournamentIdInputStrategy("Введите ID казуал турнира"),
+              new SimpleInputStrategy("Введите номер игрока в списке (используйте /casualinfo для просмотра)"));
     }
 
     @Override
     public void execute(BotFacade bot, Update update) {
-        long adminId = update.getMessage().getFrom().getId();
-        long chatId = update.getMessage().getChatId();
+        long adminId = getUserId(update);
+        long chatId = getChatId(update);
+        String username = getUsername(update);
         String tournamentId = bot.getSession(adminId).getInputs().get(0);
         String playerPosition = bot.getSession(adminId).getInputs().get(1);
         
         bot.getLogger().info("Admin {} marking player #{} as ready in tournament {}", 
-                update.getMessage().getFrom().getUserName(), playerPosition, tournamentId);
+                username, playerPosition, tournamentId);
         try {
             String url = bot.getRestBaseUrl() + "/tournamentsCasual/" + tournamentId + 
                          "/ready?playerPosition=" + playerPosition + "&adminId=" + adminId;
