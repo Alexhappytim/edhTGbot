@@ -2,14 +2,12 @@ package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.casual;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.TournamentIdInputStrategy;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 public class ReadyAll extends Command {
 
     public ReadyAll() {
-        super("ready_all", "tournament_admin_casual", 
-              new TournamentIdInputStrategy("Введите ID казуал турнира"));
+        super("ready_all", 0, "tournament_admin_casual", false);
     }
 
     @Override
@@ -17,7 +15,12 @@ public class ReadyAll extends Command {
         long adminId = getUserId(update);
         long chatId = getChatId(update);
         String username = getUsername(update);
-        String tournamentId = bot.getSession(adminId).getInputs().get(0);
+        String tournamentId = bot.getSession(adminId).getTournamentId();
+        
+        if (tournamentId == null || tournamentId.isEmpty()) {
+            bot.sendMessage(chatId, "❌ Ошибка: вы не присоединены ни к какому турниру");
+            return;
+        }
         
         bot.getLogger().info("Admin {} marking all players as ready in tournament {}", 
                 username, tournamentId);
@@ -26,11 +29,11 @@ public class ReadyAll extends Command {
                          "/ready-all?adminId=" + adminId;
             bot.getRestTemplate().postForEntity(url, null, String.class);
             bot.getLogger().info("All players marked as ready by admin {} in tournament {}", 
-                    update.getMessage().getFrom().getUserName(), tournamentId);
+                    username, tournamentId);
             bot.sendMessage(chatId, "✅ Все игроки отмечены как готовые!");
         } catch (Exception e) {
             bot.getLogger().error("Mark all ready failed: {}", e.getMessage(), e);
-            bot.sendMessage(chatId, "Ошибка: " + e.getMessage());
+            bot.sendMessage(chatId, "❌ Ошибка: " + e.getMessage());
         }
     }
 }

@@ -8,8 +8,9 @@ public enum Keyboards {
             "Выбери действие:",
             "Зарегистрироваться:cmd:register",
             "Создать турнир:kbd:tournament_creating",
-            "Присоединиться к турниру:kbd:tournament_choosing",
-            "Управление моими турнирами:kbd:tournament_admin_choosing",
+            "Присоединиться к турниру:cmd:join_any_tournament",
+            "Переключиться на турнир:cmd:switch_tournament",
+            "Управление моим турниром:cmd:manage_my_tournament",
             "Посмотреть инфо о турнире:kbd:tournament_info"
     )),
     
@@ -54,6 +55,13 @@ public enum Keyboards {
             "Что вы хотите сделать?",
             "Добавить игрока:cmd:add_to_tournament",
             "Стендинги:cmd:standings",
+            "⭐Запустить турнир (первые пары):cmd:start_tournament",
+            "⭐Удалить игрока:cmd:kick_from_tournament",
+            "Посмотреть пары:cmd:pairings",
+            "Отправить результат матча:cmd:submit_result",
+            "⭐Отредактировать результат:cmd:edit_result",
+            "⭐Начать следующий раунд:cmd:start_next_round",
+            "⭐Отправить уведомления о парах:cmd:notify_round",
             "Назад:kbd:main"
 
     ))
@@ -72,10 +80,5 @@ public enum Keyboards {
             }
         }
         return null;
-//        return switch (key.toLowerCase()) {
-//            case "main" -> MAIN;
-//            case "tournament_creating" -> TOURNAMENT_CREATING;
-//            default -> null;
-//        };
     }
 }

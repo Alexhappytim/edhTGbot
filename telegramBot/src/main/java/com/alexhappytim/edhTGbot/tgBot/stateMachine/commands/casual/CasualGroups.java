@@ -2,7 +2,6 @@ package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.casual;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.TournamentIdInputStrategy;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.ResponseEntity;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -10,8 +9,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class CasualGroups extends Command {
 
     public CasualGroups() {
-        super("casual_groups", "tournament_admin_casual", 
-              new TournamentIdInputStrategy("Введите ID казуал турнира"));
+        super("casual_groups",0, "tournament_admin_casual", true);
     }
 
     @Override
@@ -19,7 +17,12 @@ public class CasualGroups extends Command {
         long userId = getUserId(update);
         long chatId = getChatId(update);
         String username = getUsername(update);
-        String tournamentId = bot.getSession(userId).getInputs().get(0);
+        String tournamentId = bot.getSession(userId).getTournamentId();
+        
+        if (tournamentId == null || tournamentId.isEmpty()) {
+            bot.sendMessage(chatId, "❌ Ошибка: вы не присоединены ни к какому турниру");
+            return;
+        }
         
         bot.getLogger().debug("User {} requesting groups for tournament {}", 
                 username, tournamentId);
@@ -29,7 +32,7 @@ public class CasualGroups extends Command {
             JsonNode groups = bot.getObjectMapper().readTree(response.getBody());
             bot.getLogger().debug("Retrieved {} groups for tournament {}", groups.size(), tournamentId);
             
-            StringBuilder sb = new StringBuilder("Текущие группы:\n");
+            StringBuilder sb = new StringBuilder("📋 Текущие группы:\n");
             for (JsonNode group : groups) {
                 sb.append("Группа ").append(group.get("groupNumber").asInt()).append(": ");
                 for (JsonNode player : group.get("players")) {
@@ -41,7 +44,7 @@ public class CasualGroups extends Command {
             bot.sendMessage(chatId, sb.toString());
         } catch (Exception e) {
             bot.getLogger().error("Get groups failed for tournament {}: {}", tournamentId, e.getMessage(), e);
-            bot.sendMessage(chatId, "Ошибка получения групп: " + e.getMessage());
+            bot.sendMessage(chatId, "❌ Ошибка получения групп: " + e.getMessage());
         }
     }
 }

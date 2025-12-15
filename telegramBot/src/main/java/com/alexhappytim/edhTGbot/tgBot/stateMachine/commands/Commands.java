@@ -10,11 +10,23 @@ public enum Commands {
     // Registration
     REGISTER(new Register()),
     
+    // Navigation
+    JOIN_ANY_TOURNAMENT(new JoinAnyTournament()),
+    SWITCH_TOURNAMENT(new SwitchTournament()),
+    SWITCH_TOURNAMENT_MANUAL(new SwitchTournamentManual()),
+    MANAGE_MY_TOURNAMENT(new ManageMyTournament()),
+    
     // Swiss Tournament
     CREATE_TOURNAMENT(new CreateTournament()),
     JOIN_TOURNAMENT(new JoinTournament()),
     ADD_TO_TOURNAMENT(new AddToTournament()),
     STANDINGS(new Standings()),
+    START_TOURNAMENT(new StartTournament()),
+    KICK_FROM_TOURNAMENT(new KickFromTournament()),
+    PAIRINGS(new Pairings()),
+    SUBMIT_RESULT(new SubmitResult()),
+    EDIT_RESULT(new EditResult()),
+    START_NEXT_ROUND(new StartNextRound()),
     
     // Casual Tournament
     CREATE_CASUAL(new CreateCasual()),

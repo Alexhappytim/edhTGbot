@@ -40,7 +40,6 @@ public class TournamentCasualController {
         parent = tournamentRepository.save(parent);
 
         TournamentCasual tournament = TournamentCasual.builder()
-                .id(parent.getId())
                 .tournament(parent)
                 .name(request.getName())
                 .owner(owner)
@@ -55,36 +54,44 @@ public class TournamentCasualController {
         if (tournamentOpt.isEmpty()) {
             throw new IllegalArgumentException("Tournament not found");
         }
-        final User tempUser;
-        Optional<User> userOpt = userRepository.findByTelegramId(request.getUserId());
+
+        final User participantUser;
+        
         if (request.getIsTemporary()) {
-            if (!Objects.equals(tournamentOpt.get().getOwner().getTelegramId(), request.getUserId())) {
-                throw new IllegalArgumentException("It is not your tournament");
+            // Verify the requester is the tournament owner
+            User owner = userRepository.findByTelegramId(request.getUserId())
+                    .orElseThrow(() -> new IllegalArgumentException("Requester not found"));
+                    
+            if (!tournamentOpt.get().getOwner().getId().equals(owner.getId())) {
+                throw new IllegalArgumentException("Only tournament owner can add temporary participants");
             }
-            tempUser = userRepository.save(User.builder()
+            
+            // Create temporary user
+            participantUser = userRepository.save(User.builder()
                     .userTag("")
                     .displayName(request.getParticipantName())
-                    .telegramId((long) -1)
-                    .chatId((long) -1)
+                    .telegramId(-1L)
+                    .chatId(-1L)
                     .build());
         } else {
+            // Regular user join
+            Optional<User> userOpt = userRepository.findByTelegramId(request.getUserId());
             if (userOpt.isEmpty()) {
                 throw new IllegalArgumentException("User not found");
-            } else {
-                tempUser = userOpt.get();
             }
+            participantUser = userOpt.get();
         }
 
         TournamentCasual tournament = tournamentOpt.get();
 
-        if (tournament.getUsers().stream().anyMatch(p -> p.getId().equals(tempUser.getId())) && !request.getIsTemporary()) {
+        if (tournament.getUsers().stream().anyMatch(p -> p.getId().equals(participantUser.getId()))) {
             throw new IllegalStateException("User already registered in this tournament");
         }
 
-        tournament.getUsers().add(tempUser);
+        tournament.getUsers().add(participantUser);
         tournamentCasualRepository.save(tournament);
 
-        return ResponseEntity.ok(toUserDTO(tempUser));
+        return ResponseEntity.ok(toUserDTO(participantUser));
     }
 
     @PostMapping("/{id}/start-round")

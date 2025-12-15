@@ -2,8 +2,6 @@ package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.casual;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.SimpleInputStrategy;
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.TournamentIdInputStrategy;
 import com.alexhappytim.mtg.dto.JoinTournamentRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.HttpEntity;
@@ -15,9 +13,8 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class AddToCasual extends Command {
 
     public AddToCasual() {
-        super("add_to_casual", "tournament_admin_casual",
-              new SimpleInputStrategy("Введите ID казуал турнира"), 
-              new SimpleInputStrategy("Введите имя игрока"));
+        super("add_to_casual", 1,"tournament_admin_casual", true,
+              "Введите имя игрока");
     }
 
     @Override
@@ -25,8 +22,14 @@ public class AddToCasual extends Command {
         long userId = getUserId(update);
         long chatId = getChatId(update);
         String username = getUsername(update);
-        String tournamentId = bot.getSession(userId).getInputs().get(0);
-        String displayName = bot.getSession(userId).getInputs().get(1);
+        String tournamentId = bot.getSession(userId).getTournamentId();
+        
+        if (tournamentId == null || tournamentId.isEmpty()) {
+            bot.sendMessage(chatId, "❌ Ошибка: вы не присоединены ни к какому турниру");
+            return;
+        }
+        
+        String displayName = bot.getSession(userId).getInputs().get(0);
         
         bot.getLogger().info("User {} adding temporary user {} to casual tournament {}", 
                 username, displayName, tournamentId);
@@ -41,10 +44,10 @@ public class AddToCasual extends Command {
                     entity, String.class);
             JsonNode node = bot.getObjectMapper().readTree(response.getBody());
             bot.getLogger().info("Temporary user {} added to casual tournament {}", displayName, tournamentId);
-            bot.sendMessage(chatId, "Добавлен временный игрок: " + node.get("displayName").asText());
+            bot.sendMessage(chatId, "✅ Добавлен временный игрок: " + node.get("displayName").asText());
         } catch (Exception e) {
             bot.getLogger().error("Add to casual tournament failed: {}", e.getMessage(), e);
-            bot.sendMessage(chatId, "Ошибка добавления: " + e.getMessage());
+            bot.sendMessage(chatId, "❌ Ошибка добавления: " + e.getMessage());
         }
     }
 }

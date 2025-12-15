@@ -2,7 +2,6 @@ package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.casual;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.TournamentIdInputStrategy;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.ResponseEntity;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -10,8 +9,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class StartCasual extends Command {
 
     public StartCasual() {
-        super("start_casual", "tournament_casual", 
-              new TournamentIdInputStrategy("Введите ID казуал турнира"));
+        super("start_casual",0,  "tournament_casual", true);
     }
 
     @Override
@@ -19,7 +17,12 @@ public class StartCasual extends Command {
         long userId = getUserId(update);
         long chatId = getChatId(update);
         String username = getUsername(update);
-        String tournamentId = bot.getSession(userId).getInputs().get(0);
+        String tournamentId = bot.getSession(userId).getTournamentId();
+        
+        if (tournamentId == null || tournamentId.isEmpty()) {
+            bot.sendMessage(chatId, "❌ Ошибка: вы не присоединены ни к какому турниру");
+            return;
+        }
         
         bot.getLogger().info("User {} starting round for casual tournament {}", 
                 username, tournamentId);
@@ -30,7 +33,7 @@ public class StartCasual extends Command {
             JsonNode groups = bot.getObjectMapper().readTree(response.getBody());
             bot.getLogger().info("Round started for tournament {}, {} groups created", tournamentId, groups.size());
             
-            StringBuilder sb = new StringBuilder("Раунд начался! Группы:\n");
+            StringBuilder sb = new StringBuilder("🎮 Раунд начался! Группы:\n");
             for (JsonNode group : groups) {
                 sb.append("Группа ").append(group.get("groupNumber").asInt()).append(": ");
                 for (JsonNode player : group.get("players")) {
@@ -42,7 +45,7 @@ public class StartCasual extends Command {
             bot.sendMessage(chatId, sb.toString());
         } catch (Exception e) {
             bot.getLogger().error("Start round failed for tournament {}: {}", tournamentId, e.getMessage(), e);
-            bot.sendMessage(chatId, "Ошибка начала раунда: " + e.getMessage());
+            bot.sendMessage(chatId, "❌ Ошибка начала раунда: " + e.getMessage());
         }
     }
 }

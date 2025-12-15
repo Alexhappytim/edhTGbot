@@ -2,7 +2,6 @@ package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.casual;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.SimpleInputStrategy;
 import com.alexhappytim.mtg.dto.CreateTournamentRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.HttpEntity;
@@ -14,8 +13,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class CreateCasual extends Command {
 
     public CreateCasual() {
-        super("create_casual", "tournament_admin_casual", 
-              new SimpleInputStrategy("Введите название казуал турнира"));
+        super("create_casual", 1, "tournament_admin_casual", false,"Введите название казуал турнира");
     }
 
     @Override
@@ -25,8 +23,7 @@ public class CreateCasual extends Command {
         String username = getUsername(update);
         String name = bot.getSession(userId).getInputs().get(0);
         
-        bot.getLogger().info("User {} creating casual tournament: {}", 
-                username, name);
+        bot.getLogger().info("User {} creating casual tournament: {}", username, name);
         try {
             CreateTournamentRequest request = new CreateTournamentRequest(name, 0, userId);
             HttpHeaders headers = new HttpHeaders();
@@ -36,12 +33,17 @@ public class CreateCasual extends Command {
             ResponseEntity<String> response = bot.getRestTemplate().postForEntity(
                     bot.getRestBaseUrl() + "/tournamentsCasual", entity, String.class);
             JsonNode node = bot.getObjectMapper().readTree(response.getBody());
-            bot.getLogger().info("Casual tournament created with ID: {}", node.get("id").asText());
-            bot.sendMessage(chatId, "Казуал турнир создан! ID: " + node.get("id").asText());
+            String tournamentId = node.get("id").asText();
+            
+            // Save tournament ID and type to session
+            bot.getSession(userId).setTournamentId(tournamentId);
+            bot.getSession(userId).setTournamentType("CASUAL");
+            
+            bot.getLogger().info("Casual tournament created with ID: {}", tournamentId);
+            bot.sendMessage(chatId, "✅ Казуал турнир создан! ID: " + tournamentId);
         } catch (Exception e) {
-            bot.getLogger().error("Casual tournament creation failed for user {}: {}", 
-                    update.getMessage().getFrom().getUserName(), e.getMessage(), e);
-            bot.sendMessage(chatId, "Ошибка создания: " + e.getMessage());
+            bot.getLogger().error("Casual tournament creation failed for user {}: {}", username, e.getMessage(), e);
+            bot.sendMessage(chatId, "❌ Ошибка создания: " + e.getMessage());
         }
     }
 }

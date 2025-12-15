@@ -1,7 +1,6 @@
 package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.SimpleInputStrategy;
 import org.springframework.http.HttpEntity;
 import org.springframework.web.client.ResourceAccessException;
 import org.telegram.telegrambots.abilitybots.api.objects.MessageContext;
@@ -18,18 +17,22 @@ import java.net.ConnectException;
 public class Register extends Command{
 
     public Register() {
-        super("register", "main", 
-              new SimpleInputStrategy("Введите имя, которое будет отображаться в турнирных таблицах"));
+        super("register", 1, "main", false, "Введите имя, которое будет отображаться в турнирных таблицах");
     }
 
     @Override
     public void execute(BotFacade bot, Update update) {
-            long userId = getUserId(update);
-            long chatId = getChatId(update);
-            String displayName = bot.getSession(userId).getInputs().get(0);
-            String username = getUsername(update);
-            
-            bot.getLogger().info("User {} (chatId: {}) attempting to register with displayName: {}",
+        if (!isMessage(update)) {
+            bot.getLogger().warn("Register command requires message update, got callback query");
+            return;
+        }
+
+        long userId = getUserId(update);
+        long chatId = getChatId(update);
+        String username = getUsername(update);
+        String displayName = bot.getSession(userId).getInputs().get(0);
+
+        bot.getLogger().info("User {} (chatId: {}) attempting to register with displayName: {}",
                 username, chatId, displayName);
         try {
             CreateUserRequest request = new CreateUserRequest(
@@ -45,15 +48,15 @@ public class Register extends Command{
             ResponseEntity<String> response = new RestTemplate().postForEntity(bot.getRestBaseUrl() + "/users", entity, String.class);
             JsonNode node = bot.getObjectMapper().readTree(response.getBody());
 
-            bot.getLogger().info("User {} registered successfully with ID: {}", update.getMessage().getFrom().getUserName(), node.get("id").asText());
-            bot.sendMessage(update.getMessage().getChatId(), "Registered! User ID: " + node.get("id").asText());
+            bot.getLogger().info("User {} registered successfully with ID: {}", username, node.get("id").asText());
+            bot.sendMessage(chatId, "✅ Зарегистрированы! User ID: " + node.get("id").asText());
         }catch (ResourceAccessException e){
-            bot.getLogger().error("Registration failed for user {}: {}", update.getMessage().getFrom().getUserName(), e.getMessage(), e);
-            bot.sendMessage(update.getMessage().getChatId(), "Registration failed: " + "Couldn't connect to server");
+            bot.getLogger().error("Registration failed for user {}: {}", username, e.getMessage(), e);
+            bot.sendMessage(chatId, "❌ Регистрация не удалась: Невозможно подключиться к серверу");
         }
         catch (Exception e) {
-            bot.getLogger().error("Registration failed for user {}: {}", update.getMessage().getFrom().getUserName(), e.getMessage(), e);
-            bot.sendMessage(update.getMessage().getChatId(), "Registration failed: " + e.getMessage());
+            bot.getLogger().error("Registration failed for user {}: {}", username, e.getMessage(), e);
+            bot.sendMessage(chatId, "❌ Регистрация не удалась: " + e.getMessage());
         }
     }
 }

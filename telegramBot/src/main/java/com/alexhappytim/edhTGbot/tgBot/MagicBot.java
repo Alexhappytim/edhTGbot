@@ -5,15 +5,14 @@ import com.alexhappytim.edhTGbot.tgBot.stateMachine.KeyboardWrapper;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Commands;
 
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 import org.telegram.telegrambots.abilitybots.api.bot.AbilityBot;
 import org.telegram.telegrambots.abilitybots.api.objects.Ability;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
@@ -48,11 +47,9 @@ public class MagicBot extends AbilityBot implements BotFacade {
         this.objectMapper = new ObjectMapper();
 
         log.info("Initializing MagicBot with username: {}, REST URL: {}", botUsername, restBaseUrl);
-//        this.addExtension(new SwissTournamentExtension(restBaseUrl, objectMapper, restTemplate, silent));
-//        this.addExtension(new CasualTournamentExtension(restBaseUrl, objectMapper, restTemplate, silent, this));
-
         this.onRegister();
         log.info("MagicBot initialized successfully");
+
     }
 
     @Override
@@ -65,10 +62,10 @@ public class MagicBot extends AbilityBot implements BotFacade {
                 userId = update.getMessage().getFrom().getId();
             }
 
-            UserSession session = sessions.get(userId);
+            UserSession session = getSession(userId);
             if (session == null) {
-                sessions.put(userId, new UserSession(null, null, null, null));
-                session = sessions.get(userId);
+                session = new UserSession(null, null, null, null, null);
+                setSession(userId, session);
             }
 
             if (update.hasCallbackQuery()) {
@@ -82,24 +79,8 @@ public class MagicBot extends AbilityBot implements BotFacade {
                     Command cmd = Commands.fromKey(session.getPendingCommandKey());
                     if (session.getInputs() == null) session.setInputs(new java.util.ArrayList<>());
                     if (session.getInputStep() == null) session.setInputStep(0);
-                    
-                    try {
-                        // Collect input using the strategy's validation (this also saves it to session)
-                        cmd.getInputStrategies()[session.getInputStep()].collectInput(this, update);
-                    } catch (Exception e) {
-                        log.error("Input validation failed: {}", e.getMessage());
-                        sendMessage(update.getMessage().getChatId(), "Ошибка: " + e.getMessage(), null);
-                        return;
-                    }
-                    
-                    // Move to next input step, skipping any inputs whose preconditions are already met
+                    session.getInputs().add(update.getMessage().getText().trim());
                     int nextStep = session.getInputStep() + 1;
-                    while (nextStep < cmd.getRequiredInputs() && cmd.getInputStrategies()[nextStep].isPreconditionMet(this, update)) {
-                        log.info("Skipping input step {} as precondition is already met", nextStep);
-                        session.getInputs().add(""); // Add placeholder for skipped input
-                        nextStep++;
-                    }
-                    
                     if (nextStep < cmd.getRequiredInputs()) {
                         session.setInputStep(nextStep);
                         InlineKeyboardRow cancelRow = new InlineKeyboardRow();
@@ -152,6 +133,31 @@ public class MagicBot extends AbilityBot implements BotFacade {
             return;
         }
 
+        // Route callback explicitly by prefix to avoid random handling
+        if (data != null) {
+            if (data.startsWith("kick_user:") || data.startsWith("kick_page:")) {
+                Command command = Commands.fromKey("kick_from_tournament");
+                if (command != null && command.handleCallback(this, update, data)) {
+                    return;
+                }
+            } else if (data.startsWith("submit_score:")) {
+                Command command = Commands.fromKey("submit_result");
+                if (command != null && command.handleCallback(this, update, data)) {
+                    return;
+                }
+            } else if (data.startsWith("edit_match:") || data.startsWith("edit_score:") || data.equals("edit_back_to_matches")) {
+                Command command = Commands.fromKey("edit_result");
+                if (command != null && command.handleCallback(this, update, data)) {
+                    return;
+                }
+            } else if (data.startsWith("switch_tournament:")) {
+                Command command = Commands.fromKey("switch_tournament");
+                if (command != null && command.handleCallback(this, update, data)) {
+                    return;
+                }
+            }
+        }
+
         if (data != null && data.startsWith("kbd:")) {
             String kbdName = data.substring("kbd:".length());
             Keyboards kbdType = Keyboards.fromKey(kbdName);
@@ -162,42 +168,15 @@ public class MagicBot extends AbilityBot implements BotFacade {
             String cmdName = data.substring("cmd:".length());
             Command command = Commands.fromKey(cmdName);
             UserSession userSession = sessions.get(userId);
-            
+
             if (command.needsInput()) {
                 userSession.setPendingCommandKey(cmdName);
                 userSession.setInputs(new java.util.ArrayList<>());
                 userSession.setInputStep(0);
-                
-                // Find first input step whose precondition is not met
-                int firstNeededStep = 0;
-                while (firstNeededStep < command.getRequiredInputs() && 
-                       command.getInputStrategies()[firstNeededStep].isPreconditionMet(this, update)) {
-                    log.info("Skipping input step {} as precondition is already met", firstNeededStep);
-                    userSession.getInputs().add(""); // Add placeholder for skipped input
-                    firstNeededStep++;
-                }
-                
-                if (firstNeededStep < command.getRequiredInputs()) {
-                    userSession.setInputStep(firstNeededStep);
-                    InlineKeyboardRow cancelRow = new InlineKeyboardRow();
-                    cancelRow.add(InlineKeyboardButton.builder().text("Отмена").callbackData("cancel").build());
-                    InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder().keyboard(java.util.List.of(cancelRow)).build();
-                    editMessage(update.getCallbackQuery().getMessage().getChatId(), 
-                                update.getCallbackQuery().getMessage().getMessageId(), 
-                                command.getInputPrompt(firstNeededStep), kb);
-                } else {
-                    // All inputs' preconditions met, execute immediately
-                    command.execute(this, update);
-                    userSession.setPendingCommandKey(null);
-                    userSession.setInputs(null);
-                    userSession.setInputStep(null);
-                    String kbdName = command.getNextKeyboard();
-                    Keyboards kbdType = Keyboards.fromKey(kbdName);
-                    KeyboardWrapper keyboardWrapper = kbdType != null ? kbdType.getKeyboard() : Keyboards.MAIN.getKeyboard();
-                    editMessage(update.getCallbackQuery().getMessage().getChatId(), 
-                                update.getCallbackQuery().getMessage().getMessageId(), 
-                                keyboardWrapper.getText(), keyboardWrapper.getKeyboard());
-                }
+                InlineKeyboardRow cancelRow = new InlineKeyboardRow();
+                cancelRow.add(InlineKeyboardButton.builder().text("Отмена").callbackData("cancel").build());
+                InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder().keyboard(java.util.List.of(cancelRow)).build();
+                editMessage(update.getCallbackQuery().getMessage().getChatId(), update.getCallbackQuery().getMessage().getMessageId(), command.getInputPrompt(0), kb);
             } else {
                 command.execute(this, update);
             }
@@ -227,15 +206,46 @@ public class MagicBot extends AbilityBot implements BotFacade {
                 .build();
     }
 
-    // SessionProvider implementation
     @Override
     public UserSession getSession(long userId) {
-        return sessions.get(userId);
+        UserSession session = sessions.get(userId);
+        if (session == null) {
+            try {
+                if (db == null) {
+                    log.warn("AbilityBot DBContext is null; skipping session load for user {} (persistence disabled)", userId);
+                } else {
+                    Map<Long, UserSession> persistedSessions = db.getMap("user_sessions");
+                    session = persistedSessions.get(userId);
+                    if (session != null) {
+                        sessions.put(userId, session);
+                        log.debug("Loaded session for user {} from database", userId);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to load session for user {} from database: {}", userId, String.valueOf(e));
+                log.debug("Session load exception", e);
+            }
+        }
+        return session;
     }
 
     @Override
     public void setSession(long userId, UserSession session) {
         sessions.put(userId, session);
+        // Persist to AbilityBot database using getMap
+        try {
+            if (db == null) {
+                log.warn("AbilityBot DBContext is null; failed to persist session for user {} (persistence disabled)", userId);
+                return;
+            }
+            Map<Long, UserSession> persistedSessions = db.getMap("user_sessions");
+            persistedSessions.put(userId, session);
+            db.commit();
+            log.debug("Persisted session for user {} to database", userId);
+        } catch (Exception e) {
+            log.warn("Failed to persist session for user {} to database: {}", userId, String.valueOf(e));
+            log.debug("Session persist exception", e);
+        }
     }
 
     @Override
@@ -259,31 +269,35 @@ public class MagicBot extends AbilityBot implements BotFacade {
     }
 
     public void sendMessage(long chatID, String text) {
-        silent.execute(SendMessage.builder()
-                .chatId(chatID)
-                .text(text)
-                .replyMarkup(new ReplyKeyboardRemove(true))
-                .build());
+
+        sendMessage(chatID,text,new ReplyKeyboardRemove(true));
 
     }
 
-    public void sendMessage(long chatID, String text, InlineKeyboardMarkup kb) {
-        silent.execute(SendMessage.builder()
+    public void sendMessage(long chatID, String text, ReplyKeyboard kb) {
+        SendMessage sendMessage = SendMessage.builder()
                 .chatId(chatID)
                 .text(text)
                 .replyMarkup(kb)
-                .build());
+                .build();
+        sendMessage.enableMarkdown(true);
+        sendMessage.setParseMode("Markdown");
+        log.info("send " + text);
+        silent.execute(sendMessage);
 
     }
 
     public void editMessage(long chatID, long messageID, String text, InlineKeyboardMarkup kb) {
+        EditMessageText editMessage = EditMessageText.builder()
+                .chatId(chatID)
+                .messageId(toIntExact(messageID))
+                .text(text)
+                .replyMarkup(kb)
+                .build();
+        editMessage.enableMarkdown(true);
+        editMessage.setParseMode("Markdown");
         silent.execute(
-                EditMessageText.builder()
-                        .chatId(chatID)
-                        .messageId(toIntExact(messageID))
-                        .text(text)
-                        .replyMarkup(kb)
-                        .build()
+                editMessage
         );
     }
 

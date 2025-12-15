@@ -2,7 +2,6 @@ package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.swiss;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.SimpleInputStrategy;
 import com.alexhappytim.mtg.dto.JoinTournamentRequest;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -13,8 +12,8 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class AddToTournament extends Command {
 
     public AddToTournament() {
-        super("add_to_tournament", "main", 
-              new SimpleInputStrategy("Введите имя игрока для добавления"));
+        super("add_to_tournament", 1, "tournament_admin", true,
+              "Введите имя игрока для добавления");
     }
 
     @Override
@@ -23,6 +22,12 @@ public class AddToTournament extends Command {
         long chatId = getChatId(update);
         String username = getUsername(update);
         String tournamentId = bot.getSession(userId).getTournamentId();
+        
+        if (tournamentId == null || tournamentId.isEmpty()) {
+            bot.sendMessage(chatId, "❌ Ошибка: вы не присоединены ни к какому турниру");
+            return;
+        }
+        
         String displayName = bot.getSession(userId).getInputs().get(0);
         
         bot.getLogger().info("User {} adding temporary user {} to tournament {}", 
@@ -38,10 +43,10 @@ public class AddToTournament extends Command {
                     bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/join", 
                     entity, String.class);
             bot.getLogger().info("Temporary user {} added to tournament {} successfully", displayName, tournamentId);
-            bot.sendMessage(chatId, "Игрок добавлен в турнир! Ответ: " + response.getBody());
+            bot.sendMessage(chatId, "✅ Игрок добавлен в турнир! Ответ: " + response.getBody());
         } catch (Exception e) {
             bot.getLogger().error("Add to tournament failed: {}", e.getMessage(), e);
-            bot.sendMessage(chatId, "Ошибка добавления: " + e.getMessage());
+            bot.sendMessage(chatId, "❌ Ошибка добавления: " + e.getMessage());
         }
     }
 }

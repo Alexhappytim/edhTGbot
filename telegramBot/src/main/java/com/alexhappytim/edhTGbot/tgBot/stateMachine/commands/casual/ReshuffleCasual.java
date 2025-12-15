@@ -2,7 +2,6 @@ package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.casual;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.TournamentIdInputStrategy;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.ResponseEntity;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -10,8 +9,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class ReshuffleCasual extends Command {
 
     public ReshuffleCasual() {
-        super("reshuffle_casual", "tournament_admin_casual", 
-              new TournamentIdInputStrategy("Введите ID казуал турнира"));
+        super("reshuffle_casual",0, "tournament_admin_casual", true);
     }
 
     @Override
@@ -19,7 +17,12 @@ public class ReshuffleCasual extends Command {
         long adminId = getUserId(update);
         long chatId = getChatId(update);
         String username = getUsername(update);
-        String tournamentId = bot.getSession(adminId).getInputs().get(0);
+        String tournamentId = bot.getSession(adminId).getTournamentId();
+        
+        if (tournamentId == null || tournamentId.isEmpty()) {
+            bot.sendMessage(chatId, "❌ Ошибка: вы не присоединены ни к какому турниру");
+            return;
+        }
         
         bot.getLogger().info("Admin {} reshuffling ready users in tournament {}", 
                 username, tournamentId);
@@ -31,7 +34,7 @@ public class ReshuffleCasual extends Command {
             bot.getLogger().info("Reshuffle completed for tournament {}, {} new groups", 
                     tournamentId, groups.size());
             
-            StringBuilder sb = new StringBuilder("Перетасовка! Новые группы:\n");
+            StringBuilder sb = new StringBuilder("🎲 Перетасовка! Новые группы:\n");
             for (JsonNode group : groups) {
                 sb.append("Группа ").append(group.get("groupNumber").asInt()).append(": ");
                 for (JsonNode player : group.get("players")) {
@@ -43,7 +46,7 @@ public class ReshuffleCasual extends Command {
             bot.sendMessage(chatId, sb.toString());
         } catch (Exception e) {
             bot.getLogger().error("Reshuffle failed for tournament {}: {}", tournamentId, e.getMessage(), e);
-            bot.sendMessage(chatId, "Ошибка перетасовки: " + e.getMessage());
+            bot.sendMessage(chatId, "❌ Ошибка перетасовки: " + e.getMessage());
         }
     }
 }

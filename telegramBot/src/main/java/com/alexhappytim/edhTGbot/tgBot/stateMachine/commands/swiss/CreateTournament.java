@@ -2,7 +2,6 @@ package com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.swiss;
 
 import com.alexhappytim.edhTGbot.tgBot.BotFacade;
 import com.alexhappytim.edhTGbot.tgBot.stateMachine.commands.Command;
-import com.alexhappytim.edhTGbot.tgBot.stateMachine.input.SimpleInputStrategy;
 import com.alexhappytim.mtg.dto.CreateTournamentRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.HttpEntity;
@@ -15,9 +14,9 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 public class CreateTournament extends Command {
 
     public CreateTournament() {
-        super("create_tournament", "main",
-              new SimpleInputStrategy("Введите название турнира"),
-              new SimpleInputStrategy("Введите максимальное количество игроков"));
+        super("create_tournament", 2, "tournament_admin",false,
+              "Введите название турнира",
+              "Введите максимальное количество игроков");
     }
 
     @Override
@@ -41,15 +40,19 @@ public class CreateTournament extends Command {
             ResponseEntity<String> response = new RestTemplate().postForEntity(
                     bot.getRestBaseUrl() + "/tournaments", entity, String.class);
             JsonNode node = bot.getObjectMapper().readTree(response.getBody());
-            bot.getLogger().info("Tournament created successfully with ID: {}", node.get("id").asText());
-            bot.sendMessage(chatId, "Турнир создан! ID: " + node.get("id").asText());
+            String tournamentId = node.get("id").asText();
+            bot.getSession(userId).setTournamentId(tournamentId);
+            bot.getSession(userId).setTournamentType("SWISS");
+
+            bot.getLogger().info("Tournament created successfully with ID: {}", tournamentId);
+            bot.sendMessage(chatId, "✅ Турнир создан! ID: " + tournamentId);
         } catch (NumberFormatException e) {
             bot.getLogger().error("Invalid maxPlayers value: {}", maxPlayersStr);
-            bot.sendMessage(chatId, "Ошибка: максимальное количество игроков должно быть числом");
+            bot.sendMessage(chatId, "❌ Ошибка: максимальное количество игроков должно быть числом");
         } catch (Exception e) {
             bot.getLogger().error("Tournament creation failed for user {}: {}", 
-                    update.getMessage().getFrom().getUserName(), e.getMessage(), e);
-            bot.sendMessage(chatId, "Ошибка создания турнира: " + e.getMessage());
+                    username, e.getMessage(), e);
+            bot.sendMessage(chatId, "❌ Ошибка создания турнира: " + e.getMessage());
         }
     }
 }
