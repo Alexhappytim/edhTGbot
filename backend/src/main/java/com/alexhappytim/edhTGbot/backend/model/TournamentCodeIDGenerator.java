@@ -30,8 +30,6 @@ public class TournamentCodeIDGenerator implements IdentifierGenerator {
         Object result = session.createNativeQuery(sql)
                 .setParameter("id", id)
                 .uniqueResult();
-        System.out.println(result);
-        System.out.println(id);
         return (boolean) result;
     }
 }

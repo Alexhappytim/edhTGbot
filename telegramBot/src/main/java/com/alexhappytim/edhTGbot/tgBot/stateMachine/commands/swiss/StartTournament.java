@@ -26,7 +26,7 @@ public class StartTournament extends Command {
         bot.getLogger().info("User {} starting tournament {}", username, tournamentId);
         try {
                 ResponseEntity<String> response = bot.getRestTemplate().postForEntity(
-                    bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/start-round?requesterTelegramId=" + userId,
+                    bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/swiss/start-round?requesterTelegramId=" + userId,
                     null, String.class);
             
             bot.getLogger().info("Tournament {} started successfully", tournamentId);

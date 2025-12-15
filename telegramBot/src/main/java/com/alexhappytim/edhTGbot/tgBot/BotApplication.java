@@ -13,9 +13,7 @@ public class BotApplication {
         try {
             TelegramBotsLongPollingApplication app = new TelegramBotsLongPollingApplication();
             app.registerBot(botToken, bot);
-            System.out.println("SwissTournamentBot started.");
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
+        } catch (TelegramApiException e){
         }
     }
 }

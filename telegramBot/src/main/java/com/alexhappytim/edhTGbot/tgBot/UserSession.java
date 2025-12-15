@@ -16,8 +16,7 @@ public class UserSession implements Serializable {
     private String pendingCommandKey;
     private java.util.List<String> inputs;
     private Integer inputStep;
-    
-    // Store tournament history: tournament ID -> tournament type
+
     private Map<String, String> joinedTournaments;
 
     public UserSession(String tournamentId, String tournamentType, String pendingCommandKey, 

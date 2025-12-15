@@ -22,17 +22,15 @@ public class SwissTournamentService {
         SwissTournament tournament = swissTournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));
 
-        // Only owner can start rounds
+
         if (!tournament.getOwner().getTelegramId().equals(requesterTelegramId)) {
             throw new IllegalStateException("Only tournament owner can start rounds");
         }
 
-        // If tournament already completed, cannot start more rounds
+
         if (tournament.getStatus() == TournamentStatus.COMPLETED) {
             throw new IllegalStateException("Tournament already completed");
         }
-
-        // If there are existing rounds, ensure all matches are finished before starting next
         if (!tournament.getRounds().isEmpty()) {
             Round lastRound = tournament.getRounds().get(tournament.getRounds().size() - 1);
             boolean allFinished = lastRound.getMatches().stream().allMatch(Match::isCompleted);
@@ -40,19 +38,18 @@ public class SwissTournamentService {
                 throw new IllegalStateException("Cannot start next round: not all matches are finished");
             }
 
-            // Prevent starting a new round if the last round was already the final one
             if (isLastRound(tournament)) {
                 throw new IllegalStateException("Cannot start next round: last round already played");
             }
         } else {
-            // Starting tournament should be possible only once: must be in REGISTRATION before first round
+
             if (tournament.getStatus() != TournamentStatus.REGISTRATION) {
                 throw new IllegalStateException("Cannot start tournament: invalid status");
             }
         }
         List<Participant> participants = tournament.getParticipants();
         int roundNumber = tournament.getRounds().size() + 1;
-        // Sort by points, then tieBreaker, then id
+
         participants.sort(Comparator.comparingInt(Participant::getPoints).reversed()
                 .thenComparingInt(Participant::getTieBreaker).reversed()
                 .thenComparing(Participant::getId));
@@ -61,7 +58,7 @@ public class SwissTournamentService {
         for (int i = 0; i < participants.size(); i++) {
             Participant a = participants.get(i);
             if (paired.contains(a.getId())) continue;
-            // Find next opponent not already paired and not played before
+
             for (int j = i + 1; j < participants.size(); j++) {
                 Participant b = participants.get(j);
                 if (paired.contains(b.getId())) continue;
@@ -80,7 +77,7 @@ public class SwissTournamentService {
                 }
             }
         }
-        // Handle bye (odd number of players)
+
         for (Participant p : participants) {
             if (!paired.contains(p.getId())) {
                 Match bye = Match.builder()
@@ -152,7 +149,6 @@ public class SwissTournamentService {
         match.setCompleted(true);
         matchRepository.save(match);
 
-        // Award points: 3 for win, 1 for tie, 0 for loss
         if (scoreA > scoreB) {
             match.getPlayerA().setPoints(match.getPlayerA().getPoints() + 3);
         } else if (scoreB > scoreA && match.getPlayerB() != null) {
@@ -208,13 +204,7 @@ public class SwissTournamentService {
         SwissTournament tournament = swissTournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));
         List<Participant> participants = new ArrayList<>(tournament.getParticipants());
-        
-        // Calculate tiebreakers for each participant
-        for (Participant p : participants) {
-            calculateTiebreakers(tournament, p);
-        }
-        
-        // Sort by points (desc), then by OMW% (desc), then by GW% (desc), then by OGW% (desc)
+
         participants.sort((p1, p2) -> {
             int pointsCmp = Integer.compare(p2.getPoints(), p1.getPoints());
             if (pointsCmp != 0) return pointsCmp;
@@ -234,17 +224,14 @@ public class SwissTournamentService {
             int ogwCmp = Double.compare(ogw2, ogw1);
             if (ogwCmp != 0) return ogwCmp;
             
-            // If all tiebreakers are equal, use ID as final tiebreaker
+
             return p1.getId().compareTo(p2.getId());
         });
         
         return participants;
     }
 
-    /**
-     * Calculate Opponents' Match Win Percentage (OMW%)
-     * The average of the Match Win Percentages of all opponents played against
-     */
+
     public double getOMWPercentage(SwissTournament tournament, Participant participant) {
         List<Participant> opponents = getOpponents(tournament, participant);
         if (opponents.isEmpty()) return 0.0;
@@ -256,10 +243,7 @@ public class SwissTournamentService {
         return totalMWP / opponents.size();
     }
 
-    /**
-     * Calculate Game Win Percentage (GW%)
-     * Total games won / Total games played (in BO3, count individual games)
-     */
+
     public double getGWPercentage(SwissTournament tournament, Participant participant) {
         int gamesWon = 0;
         int gamesTotal = 0;
@@ -283,10 +267,6 @@ public class SwissTournamentService {
         return gamesTotal == 0 ? 0.0 : (double) gamesWon / gamesTotal;
     }
 
-    /**
-     * Calculate Opponents' Game Win Percentage (OGW%)
-     * The average of the Game Win Percentages of all opponents played against
-     */
     public double getOGWPercentage(SwissTournament tournament, Participant participant) {
         List<Participant> opponents = getOpponents(tournament, participant);
         if (opponents.isEmpty()) return 0.0;
@@ -298,10 +278,6 @@ public class SwissTournamentService {
         return totalGWP / opponents.size();
     }
 
-    /**
-     * Calculate Match Win Percentage (MWP)
-     * Matches won / Matches played
-     */
     public double getMatchWinPercentage(SwissTournament tournament, Participant participant) {
         int matchesWon = 0;
         int matchesTotal = 0;
@@ -330,9 +306,6 @@ public class SwissTournamentService {
         return matchesTotal == 0 ? 0.0 : (double) matchesWon / matchesTotal;
     }
 
-    /**
-     * Get list of opponents this participant has played against
-     */
     public List<Participant> getOpponents(SwissTournament tournament, Participant participant) {
         List<Participant> opponents = new ArrayList<>();
         Set<Long> seenIds = new HashSet<>();
@@ -360,10 +333,7 @@ public class SwissTournamentService {
         return opponents;
     }
 
-    private void calculateTiebreakers(SwissTournament tournament, Participant participant) {
-        // Store OMW% as tieBreaker for now (backend use)
-        // The API will provide detailed tiebreaker info
-    }
+
 
     public List<Match> getCurrentPairings(String tournamentId) {
         SwissTournament tournament = swissTournamentRepository.findById(tournamentId)
@@ -378,21 +348,16 @@ public class SwissTournamentService {
         SwissTournament tournament = swissTournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new RuntimeException("Tournament not found"));
 
-        // Verify requester is tournament owner
         if (!tournament.getOwner().getTelegramId().equals(requesterTelegramId)) {
             throw new IllegalStateException("Only tournament owner can remove participants");
         }
 
-        // Tournament must be in REGISTRATION status
         if (tournament.getStatus() != TournamentStatus.REGISTRATION) {
             throw new IllegalStateException("Cannot remove participants after tournament has started");
         }
 
-        // Remove the participant by user ID (which is unique for each user, including temporary ones)
         tournament.getParticipants().removeIf(p -> {
             User user = p.getUser();
-            // For regular users, match by telegramId
-            // For temporary users (telegramId = -1), match by user database ID
             if (user.getTelegramId() == -1L) {
                 return user.getId().equals(userId);
             } else {
@@ -409,40 +374,33 @@ public class SwissTournamentService {
 
         SwissTournament tournament = match.getRound().getTournament();
 
-        // Verify requester is tournament owner
         if (!tournament.getOwner().getTelegramId().equals(requesterTelegramId)) {
             throw new IllegalStateException("Only tournament owner can edit match results");
         }
 
         validateBo3Score(scoreA, scoreB);
 
-        // Revert old points if match was already completed
         if (match.isCompleted()) {
             if (match.getScoreA() > match.getScoreB()) {
                 match.getPlayerA().setPoints(match.getPlayerA().getPoints() - 3);
             } else if (match.getScoreB() > match.getScoreA()) {
                 match.getPlayerB().setPoints(match.getPlayerB().getPoints() - 3);
             } else if (match.getScoreA() == match.getScoreB()) {
-                // Revert tie: both had 1 point
                 match.getPlayerA().setPoints(match.getPlayerA().getPoints() - 1);
                 if (match.getPlayerB() != null) {
                     match.getPlayerB().setPoints(match.getPlayerB().getPoints() - 1);
                 }
             }
         }
-
-        // Set new scores
         match.setScoreA(scoreA);
         match.setScoreB(scoreB);
         match.setCompleted(true);
 
-        // Award new points: 3 for win, 1 for tie, 0 for loss
         if (scoreA > scoreB) {
             match.getPlayerA().setPoints(match.getPlayerA().getPoints() + 3);
         } else if (scoreB > scoreA) {
             match.getPlayerB().setPoints(match.getPlayerB().getPoints() + 3);
         } else if (scoreA == scoreB) {
-            // Tie: both get 1 point
             match.getPlayerA().setPoints(match.getPlayerA().getPoints() + 1);
             if (match.getPlayerB() != null) {
                 match.getPlayerB().setPoints(match.getPlayerB().getPoints() + 1);

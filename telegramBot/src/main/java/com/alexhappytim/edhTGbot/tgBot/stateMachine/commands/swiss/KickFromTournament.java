@@ -35,9 +35,9 @@ public class KickFromTournament extends Command {
         
         bot.getLogger().info("Admin {} fetching participants for tournament {}", username, tournamentId);
         try {
-            // Fetch all participants
+
             ResponseEntity<ParticipantDTO[]> response = bot.getRestTemplate().getForEntity(
-                    bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/participants",
+                    bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/swiss/participants",
                     ParticipantDTO[].class);
             
             if (response.getBody() == null || response.getBody().length == 0) {
@@ -46,8 +46,6 @@ public class KickFromTournament extends Command {
             }
             
             List<ParticipantDTO> participants = Arrays.asList(response.getBody());
-            
-            // Show first page (10 participants per page)
             showParticipantsPage(bot, chatId, participants, 0, tournamentId, null);
             
         } catch (Exception e) {
@@ -65,8 +63,7 @@ public class KickFromTournament extends Command {
         int totalPages = (int) Math.ceil((double) participants.size() / pageSize);
         
         List<InlineKeyboardButton> buttons = new ArrayList<>();
-        
-        // Add participant buttons for this page
+
         for (int i = startIdx; i < endIdx; i++) {
             ParticipantDTO p = participants.get(i);
             String displayName = p.getUser().getDisplayName();
@@ -76,8 +73,7 @@ public class KickFromTournament extends Command {
                 buttonText += " (@" + userTag + ")";
             }
             
-            // For temporary users (telegramId = -1), use the user database ID
-            // For regular users, use the telegram ID
+
             Long userId = p.getUser().getTelegramId() == -1L ? p.getUser().getId() : p.getUser().getTelegramId();
             
             InlineKeyboardButton btn = InlineKeyboardButton.builder()
@@ -86,8 +82,7 @@ public class KickFromTournament extends Command {
                     .build();
             buttons.add(btn);
         }
-        
-        // Add pagination buttons
+
         List<InlineKeyboardButton> paginationRow = new ArrayList<>();
         if (pageNum > 0) {
             InlineKeyboardButton prevBtn = InlineKeyboardButton.builder()
@@ -104,18 +99,15 @@ public class KickFromTournament extends Command {
                     .build();
             paginationRow.add(nextBtn);
         }
-        
-        // Build keyboard
+
         List<InlineKeyboardRow> rows = new ArrayList<>();
-        
-        // Add each button as a separate row
+
         for (InlineKeyboardButton btn : buttons) {
             InlineKeyboardRow row = new InlineKeyboardRow();
             row.add(btn);
             rows.add(row);
         }
-        
-        // Add pagination row if exists
+
         if (!paginationRow.isEmpty()) {
             InlineKeyboardRow paginationRowObj = new InlineKeyboardRow();
             paginationRowObj.addAll(paginationRow);
@@ -127,8 +119,7 @@ public class KickFromTournament extends Command {
                 .build();
         
         String message = String.format("📋 Выберите игрока для удаления (Страница %d из %d):", pageNum + 1, totalPages);
-        
-        // If messageId is provided, edit the existing message; otherwise send new message
+
         if (messageId != null) {
             bot.editMessage(chatId, messageId, message, markup);
         } else {
@@ -143,7 +134,6 @@ public class KickFromTournament extends Command {
         int messageId = update.getCallbackQuery().getMessage().getMessageId();
         String tournamentId = bot.getSession(userId).getTournamentId();
 
-        // Handle kick_user callback: kick_user:tournamentId:userId
         if (callbackData.startsWith("kick_user:")) {
             String[] parts = callbackData.split(":");
             if (parts.length == 3) {
@@ -153,10 +143,9 @@ public class KickFromTournament extends Command {
                     long playerId = Long.parseLong(userIdStr);
                     bot.getLogger().info("Admin {} kicking user {} from tournament {}", userId, playerId, tournamentIdFromCallback);
                     bot.getRestTemplate().postForEntity(
-                            bot.getRestBaseUrl() + "/tournaments/" + tournamentIdFromCallback + "/remove-participant?userId=" + playerId + "&requesterTelegramId=" + userId,
+                            bot.getRestBaseUrl() + "/tournaments/" + tournamentIdFromCallback + "/swiss/remove-participant?userId=" + playerId + "&requesterTelegramId=" + userId,
                             null, Void.class);
-                    
-                    // Return to tournament admin keyboard
+
                     bot.editMessage(chatId, messageId, 
                             Keyboards.TOURNAMENT_ADMIN.getKeyboard().getText(),
                             Keyboards.TOURNAMENT_ADMIN.getKeyboard().getKeyboard());
@@ -169,7 +158,6 @@ public class KickFromTournament extends Command {
             return true;
         }
 
-        // Handle kick_page callback: kick_page:tournamentId:pageNum
         if (callbackData.startsWith("kick_page:")) {
             String[] parts = callbackData.split(":");
             if (parts.length == 3) {
@@ -177,7 +165,7 @@ public class KickFromTournament extends Command {
                 int pageNum = Integer.parseInt(parts[2]);
                 try {
                     ResponseEntity<ParticipantDTO[]> response = bot.getRestTemplate().getForEntity(
-                            bot.getRestBaseUrl() + "/tournaments/" + tournamentIdFromCallback + "/participants",
+                            bot.getRestBaseUrl() + "/tournaments/" + tournamentIdFromCallback + "/swiss/participants",
                             ParticipantDTO[].class);
                     
                     if (response.getBody() != null) {
@@ -192,6 +180,6 @@ public class KickFromTournament extends Command {
             return true;
         }
 
-        return false; // Callback not handled by this command
+        return false;
     }
 }

@@ -21,9 +21,6 @@ public class CasualTournamentService {
     private final CasualGroupRepository casualGroupRepository;
     private final UserRepository userRepository;
 
-    /**
-     * Start a round: mark all users as ready, shuffle into groups of 4, then mark all as not ready.
-     */
     @Transactional
     public List<CasualGroup> startRound(String tournamentId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
@@ -53,9 +50,6 @@ public class CasualTournamentService {
         return groups;
     }
 
-    /**
-     * Reshuffle only ready users into new groups.
-     */
     @Transactional
     public List<CasualGroup> reshuffleReady(String tournamentId, Long adminTelegramId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
@@ -91,11 +85,6 @@ public class CasualTournamentService {
         return newGroups;
     }
 
-    /**
-     * Mark a user as ready (by user themselves or by admin).
-     * @param playerPosition 1-based position of player in tournament (for admin use)
-     * @param requesterTelegramId Telegram ID of the requester
-     */
     @Transactional
     public void markUserReady(String tournamentId, Integer playerPosition, Long requesterTelegramId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
@@ -120,9 +109,6 @@ public class CasualTournamentService {
         }
     }
 
-    /**
-     * Mark self as ready (by user themselves).
-     */
     @Transactional
     public void markSelfReady(String tournamentId, Long userTelegramId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
@@ -141,10 +127,6 @@ public class CasualTournamentService {
         }
     }
 
-    /**
-     * Mark a user as not ready (by admin only).
-     * @param playerPosition 1-based position of player in tournament
-     */
     @Transactional
     public void markUserNotReady(String tournamentId, Integer playerPosition, Long adminTelegramId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
@@ -164,9 +146,6 @@ public class CasualTournamentService {
         tournamentCasualRepository.save(tournament);
     }
 
-    /**
-     * Mark all users as ready for shuffle.
-     */
     @Transactional
     public void markAllReady(String tournamentId, Long adminTelegramId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
@@ -181,10 +160,6 @@ public class CasualTournamentService {
         tournamentCasualRepository.save(tournament);
     }
 
-    /**
-     * Mark all players from a specific group as ready for shuffle.
-     * @param groupNumber The group number (1-based)
-     */
     @Transactional
     public void markGroupReady(String tournamentId, Integer groupNumber, Long adminTelegramId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
@@ -208,25 +183,16 @@ public class CasualTournamentService {
         tournamentCasualRepository.save(tournament);
     }
 
-    /**
-     * Get all ready users in a tournament.
-     */
     public List<User> getReadyUsers(String tournamentId) {
         TournamentCasual tournament = tournamentCasualRepository.findById(tournamentId)
                 .orElseThrow(() -> new IllegalArgumentException("Tournament not found"));
         return tournament.getUsersReady();
     }
 
-    /**
-     * Get all groups in a tournament.
-     */
     public List<CasualGroup> getGroups(String tournamentId) {
         return casualGroupRepository.findByTournamentId(tournamentId);
     }
 
-    /**
-     * Shuffle users into groups of 4 and save.
-     */
     private List<CasualGroup> shuffleIntoGroups(TournamentCasual tournament, List<User> users) {
         Collections.shuffle(users);
         List<CasualGroup> groups = new ArrayList<>();

@@ -30,9 +30,8 @@ public class NotifyRound extends Command {
         
         bot.getLogger().info("Admin {} notifying participants for tournament {}", username, tournamentId);
         try {
-            // Get all pairings for the current round
             ResponseEntity<PairingDTO[]> pairingResponse = bot.getRestTemplate().getForEntity(
-                    bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/pairings",
+                    bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/swiss/pairings",
                     PairingDTO[].class);
             
             if (pairingResponse.getBody() == null || pairingResponse.getBody().length == 0) {
@@ -41,8 +40,7 @@ public class NotifyRound extends Command {
             }
             
             List<PairingDTO> pairings = Arrays.asList(pairingResponse.getBody());
-            
-            // Build formatted pairings message
+
             StringBuilder pairingText = new StringBuilder("📋 *Новые пары:*\n\n");
             int matchNum = 1;
             for (PairingDTO pairing : pairings) {
@@ -56,11 +54,6 @@ public class NotifyRound extends Command {
                 }
                 matchNum++;
             }
-            
-            // Note: In a real implementation, you would need a backend endpoint
-            // that returns all participant Telegram IDs and chat IDs so the bot can send them messages.
-            // For now, we'll just confirm the admin that the pairings are ready to be shared.
-            
             bot.getLogger().info("Pairings prepared for tournament {} by admin {}", tournamentId, username);
             bot.sendMessage(chatId, "✅ Уведомления отправлены всем участникам турнира!");
             bot.sendMessage(chatId, pairingText.toString());

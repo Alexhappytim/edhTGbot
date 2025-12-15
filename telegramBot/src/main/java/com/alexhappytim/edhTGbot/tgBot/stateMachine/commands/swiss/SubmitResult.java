@@ -87,7 +87,7 @@ public class SubmitResult extends Command {
             HttpEntity<SubmitMatchResultRequest> entity = new HttpEntity<>(request, headers);
 
             bot.getRestTemplate().postForEntity(
-                    bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/submit",
+                    bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/swiss/submit",
                     entity, Void.class);
 
             bot.getLogger().info("Match result submitted: {} vs {} for user {}", scoreA, scoreB, username);

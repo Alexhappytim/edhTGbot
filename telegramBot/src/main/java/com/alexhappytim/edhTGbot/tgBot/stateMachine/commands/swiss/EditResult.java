@@ -34,7 +34,7 @@ public class EditResult extends Command {
         bot.getLogger().info("Admin {} requesting matches to edit in tournament {}", username, tournamentId);
         try {
             ResponseEntity<String> response = bot.getRestTemplate().getForEntity(
-                    bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/pairings",
+                    bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/swiss/pairings",
                     String.class);
 
             JsonNode pairings = bot.getObjectMapper().readTree(response.getBody());
@@ -84,7 +84,7 @@ public class EditResult extends Command {
                 // Return to match list
                 try {
                     ResponseEntity<String> response = bot.getRestTemplate().getForEntity(
-                            bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/pairings",
+                            bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/swiss/pairings",
                             String.class);
                     JsonNode pairings = bot.getObjectMapper().readTree(response.getBody());
                     if (pairings.size() == 0) {
@@ -127,14 +127,14 @@ public class EditResult extends Command {
                 HttpEntity<SubmitMatchResultRequest> entity = new HttpEntity<>(request, headers);
 
                 bot.getRestTemplate().postForEntity(
-                        bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/edit-result",
+                        bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/swiss/edit-result",
                         entity, Void.class);
 
                 bot.getLogger().info("Match result edited by admin {}: match {} -> {}-{}", username, matchId, scoreA, scoreB);
                 
                 // Return to match list
                 ResponseEntity<String> pairingsResponse = bot.getRestTemplate().getForEntity(
-                        bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/pairings",
+                        bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/swiss/pairings",
                         String.class);
                 JsonNode pairings = bot.getObjectMapper().readTree(pairingsResponse.getBody());
                 if (pairings.size() == 0) {

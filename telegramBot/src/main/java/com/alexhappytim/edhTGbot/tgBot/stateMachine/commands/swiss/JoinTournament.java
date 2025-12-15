@@ -37,19 +37,15 @@ public class JoinTournament extends Command {
                     bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/join",
                     entity, String.class);
 
-            // Parse response to extract tournament type
             JsonNode responseNode = bot.getObjectMapper().readTree(response.getBody());
             String tournamentType = responseNode.get("tournamentType").asText();
 
-            // Save tournament type to session
             bot.getSession(userId).setTournamentType(tournamentType);
             bot.getSession(userId).setTournamentId(tournamentId);
             bot.getLogger().info("User {} joined tournament {} successfully (type: {})", username, tournamentId, tournamentType);
             bot.sendMessage(chatId, "✅ Вы присоединились к турниру! Тип: " + tournamentType);
         } catch (HttpClientErrorException e) {
             if (e.getStatusCode() == HttpStatus.CONFLICT) {
-                // 409 Conflict: User already registered or tournament exists
-                // Save tournament ID to session anyway
                 bot.getSession(userId).setTournamentId(tournamentId);
                 bot.getLogger().info("User {} conflict joining tournament {}: already registered", username, tournamentId);
                 bot.sendMessage(chatId, "ℹ️ Вы уже зарегистрированы в этом турнире. ID турнира сохранен в сессию.");

@@ -31,13 +31,10 @@ public class Standings extends Command {
                 username, tournamentId);
         try {
             ResponseEntity<String> response = bot.getRestTemplate().getForEntity(
-                    bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/standings", String.class);
+                    bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/swiss/standings", String.class);
             bot.getLogger().debug("Standings retrieved for tournament {}", tournamentId);
-            
-            // Parse and format standings nicely
+
             JsonNode standings = bot.getObjectMapper().readTree(response.getBody());
-            
-            // Convert to list and sort by points (desc) then tiebreaker (desc)
             java.util.List<JsonNode> standingsList = new java.util.ArrayList<>();
             standings.forEach(standingsList::add);
             standingsList.sort(java.util.Comparator

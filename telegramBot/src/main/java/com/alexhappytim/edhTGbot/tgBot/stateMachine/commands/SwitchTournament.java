@@ -23,8 +23,7 @@ public class SwitchTournament extends Command {
         long userId = getUserId(update);
         long chatId = getChatId(update);
         int messageId = -1;
-        
-        // Check if this is a callback query (edit message) or a direct command (send message)
+
         if (update.hasCallbackQuery() && update.getCallbackQuery().getMessage() != null) {
             messageId = update.getCallbackQuery().getMessage().getMessageId();
         }
@@ -35,8 +34,7 @@ public class SwitchTournament extends Command {
             bot.sendMessage(chatId, "❌ Вы не присоединены ни к одному турниру");
             return;
         }
-        
-        // Build keyboard with tournament options
+
         List<InlineKeyboardRow> rows = new ArrayList<>();
         for (Map.Entry<String, String> entry : tournaments.entrySet()) {
             String tournamentId = entry.getKey();
@@ -50,8 +48,7 @@ public class SwitchTournament extends Command {
                     .build());
             rows.add(row);
         }
-        
-        // Add manual input button
+
         InlineKeyboardRow manualRow = new InlineKeyboardRow();
         manualRow.add(InlineKeyboardButton.builder()
                 .text("Ввести ID и тип")
@@ -59,7 +56,6 @@ public class SwitchTournament extends Command {
                 .build());
         rows.add(manualRow);
 
-        // Add back button
         InlineKeyboardRow backRow = new InlineKeyboardRow();
         backRow.add(InlineKeyboardButton.builder()
                 .text("« Назад")
@@ -70,8 +66,7 @@ public class SwitchTournament extends Command {
         InlineKeyboardMarkup markup = InlineKeyboardMarkup.builder()
                 .keyboard(rows)
                 .build();
-        
-        // Use editMessage if callback, sendMessage if direct command
+
         if (messageId > 0) {
             bot.editMessage(chatId, messageId, "Выберите турнир для переключения:", markup);
         } else {
@@ -95,11 +90,8 @@ public class SwitchTournament extends Command {
             return true;
         }
 
-        // Switch tournament and persist session
         bot.getSession(userId).setCurrentTournament(tournamentId);
         bot.setSession(userId, bot.getSession(userId));
-
-        // Show main keyboard after switching
         KeyboardWrapper main = Keyboards.MAIN.getKeyboard();
         bot.editMessage(chatId, update.getCallbackQuery().getMessage().getMessageId(),
             main.getText(), main.getKeyboard());

@@ -34,62 +34,53 @@ public class StartNextRound extends Command {
         bot.getLogger().info("Admin {} starting next round for tournament {}", username, tournamentId);
         try {
             ResponseEntity<Void> response = bot.getRestTemplate().postForEntity(
-                    bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/next-round?requesterTelegramId=" + userId,
+                    bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/swiss/next-round?requesterTelegramId=" + userId,
                     null, Void.class);
             
             bot.getLogger().info("Next round started for tournament {} by admin {}", tournamentId, username);
-            
-            // Fetch pairings and participants to send notifications
+
             try {
                 ResponseEntity<String> pairingsResponse = bot.getRestTemplate().getForEntity(
-                        bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/pairings",
+                        bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/swiss/pairings",
                         String.class);
                 ResponseEntity<ParticipantDTO[]> participantsResponse = bot.getRestTemplate().getForEntity(
-                        bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/participants",
+                        bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/swiss/participants",
                         ParticipantDTO[].class);
                 
                 JsonNode pairingsJson = bot.getObjectMapper().readTree(pairingsResponse.getBody());
                 List<ParticipantDTO> participants = Arrays.asList(participantsResponse.getBody());
-                
-                // Create a map of telegram ID to participant for quick lookup
+
                 Map<Long, ParticipantDTO> participantMap = new HashMap<>();
                 for (ParticipantDTO p : participants) {
                     if (p.getUser() != null && p.getUser().getTelegramId() != null && p.getUser().getTelegramId() > 0) {
                         participantMap.put(p.getUser().getTelegramId(), p);
                     }
                 }
-                
-                // Send notifications to each participant
                 pairingsJson.forEach(pairing -> {
                     String playerATag = pairing.get("playerA").asText();
                     String playerADisplayName = pairing.has("playerADisplayName") ? pairing.get("playerADisplayName").asText() : playerATag;
                     String playerBTag = pairing.has("playerB") && !pairing.get("playerB").isNull() ? pairing.get("playerB").asText() : null;
                     String playerBDisplayName = pairing.has("playerBDisplayName") && !pairing.get("playerBDisplayName").isNull() ? pairing.get("playerBDisplayName").asText() : playerBTag;
-                    
-                    // Find participants and send them notifications
+
                     for (ParticipantDTO p : participants) {
                         if (p.getUser() != null && p.getUser().getTelegramId() != null && p.getUser().getTelegramId() > 0) {
                             String userTag = p.getUser().getUserTag();
                             String displayName = p.getUser().getDisplayName();
                             Long chatId_participant = p.getUser().getChatId();
-                            
-                            // Check if this participant is in this match
+
                             if ((playerATag.equals(userTag) || playerADisplayName.equals(displayName)) && playerBTag != null) {
-                                // Player A: send notification about Player B
                                 String opponentDisplay = playerBDisplayName;
                                 String notification = String.format("🎮 *Новый раунд!*\n\n" +
                                         "Ваш противник: *%s*\n" +
                                         "Удачи в игре!", opponentDisplay);
                                 bot.sendMessage(chatId_participant, notification);
                             } else if (playerBTag != null && (playerBTag.equals(userTag) || playerBDisplayName.equals(displayName))) {
-                                // Player B: send notification about Player A
                                 String opponentDisplay = playerADisplayName;
                                 String notification = String.format("🎮 *Новый раунд!*\n\n" +
                                         "Ваш противник: *%s*\n" +
                                         "Удачи в игре!", opponentDisplay);
                                 bot.sendMessage(chatId_participant, notification);
                             } else if (playerBTag == null && (playerATag.equals(userTag) || playerADisplayName.equals(displayName))) {
-                                // Bye: send notification about bye
                                 bot.sendMessage(chatId_participant, "👻 *Новый раунд!*\n\nВы получили фрау (bye). Вам начисляется 1-0!");
                             }
                         }

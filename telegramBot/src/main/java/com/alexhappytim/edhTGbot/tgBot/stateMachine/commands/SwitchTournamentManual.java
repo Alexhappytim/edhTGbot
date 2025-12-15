@@ -40,6 +40,5 @@ public class SwitchTournamentManual extends Command {
         bot.setSession(userId, session);
 
         bot.getLogger().info("User {} manually switched to tournament {} ({})", userId, tournamentId, normalizedType);
-        // MagicBot will show the next keyboard (main) automatically after execution
     }
 }

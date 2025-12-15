@@ -35,7 +35,6 @@ public enum Keyboards {
         {"Назад:kbd:main"}
     }
     )),
-    //TODO Сделать управление готовностями клавиатурой
     TOURNAMENT_ADMIN_CASUAL(KeyboardBuilder.build(
             "Что вы хотите сделать?",
             "Добавить игрока:cmd:add_to_casual",

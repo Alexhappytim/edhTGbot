@@ -24,7 +24,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static java.lang.Math.toIntExact;
 import static org.telegram.telegrambots.abilitybots.api.objects.Locality.USER;
@@ -32,7 +31,7 @@ import static org.telegram.telegrambots.abilitybots.api.objects.Privacy.PUBLIC;
 
 public class MagicBot extends AbilityBot implements BotFacade {
     private static final Logger log = LoggerFactory.getLogger(MagicBot.class);
-    private final Map<Long, UserSession> sessions = new ConcurrentHashMap<>();
+    private final Map<Long, UserSession> sessions = new java.util.HashMap<>();
 
     private final String restBaseUrl;
     private final RestTemplate restTemplate;
@@ -102,11 +101,9 @@ public class MagicBot extends AbilityBot implements BotFacade {
                 }
             }
 
-            // Normal command processing
             super.consume(update);
         } catch (Exception e) {
-            log.error(e.getMessage());
-            e.printStackTrace();
+            log.error("Error processing update", e);
         }
     }
 

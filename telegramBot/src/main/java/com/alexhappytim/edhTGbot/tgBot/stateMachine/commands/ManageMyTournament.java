@@ -25,13 +25,11 @@ public class ManageMyTournament extends Command {
         if (tournamentType == null){
             return;
         }
-        // Edit message with appropriate admin keyboard based on tournament type
         if (tournamentType.equalsIgnoreCase("CASUAL")) {
             bot.editMessage(chatId, messageId,
                     Keyboards.TOURNAMENT_ADMIN_CASUAL.getKeyboard().getText(),
                     Keyboards.TOURNAMENT_ADMIN_CASUAL.getKeyboard().getKeyboard());
         } else {
-            // Default to Swiss tournament admin
             bot.editMessage(chatId, messageId,
                     Keyboards.TOURNAMENT_ADMIN.getKeyboard().getText(),
                     Keyboards.TOURNAMENT_ADMIN.getKeyboard().getKeyboard());

@@ -30,7 +30,7 @@ public class Pairings extends Command {
         bot.getLogger().info("User {} viewing pairings for tournament {}", username, tournamentId);
         try {
             ResponseEntity<String> response = bot.getRestTemplate().getForEntity(
-                    bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/pairings",
+                    bot.getRestBaseUrl() + "/tournaments/" + tournamentId + "/swiss/pairings",
                     String.class);
             
             JsonNode pairings = bot.getObjectMapper().readTree(response.getBody());
@@ -56,8 +56,7 @@ public class Pairings extends Command {
                 Integer scoreA = pairing.get("scoreA").isNull() ? null : pairing.get("scoreA").asInt();
                 Integer scoreB = pairing.get("scoreB").isNull() ? null : pairing.get("scoreB").asInt();
                 boolean completed = pairing.get("completed").asBoolean();
-                
-                // Format player names - only add tag if it exists and is not empty
+
                 String playerAName;
                 if (playerATag != null && playerADisplay != null) {
                     if (playerATag.isEmpty()) {
@@ -94,8 +93,7 @@ public class Pairings extends Command {
             }
             
             sb.append("───────────────────────────────────────────────────```");
-            
-            // Create back button keyboard
+
             InlineKeyboardRow backRow = new InlineKeyboardRow();
             backRow.add(InlineKeyboardButton.builder()
                     .text("« Назад")
@@ -104,8 +102,6 @@ public class Pairings extends Command {
             InlineKeyboardMarkup kb = InlineKeyboardMarkup.builder()
                     .keyboard(java.util.List.of(backRow))
                     .build();
-
-            // Use editMessage if callback, sendMessage if regular message
             if (isCallbackQuery(update)) {
                 int messageId = update.getCallbackQuery().getMessage().getMessageId();
                 bot.editMessage(chatId, messageId, sb.toString(), kb);

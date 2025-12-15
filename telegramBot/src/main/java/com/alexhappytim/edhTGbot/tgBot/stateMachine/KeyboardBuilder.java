@@ -7,18 +7,9 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Утилитный класс для простого создания клавиатур.
- * Использование:
- * - KeyboardBuilder.build("Text", "Button1:callback1", "Button2:callback2")
- * - KeyboardBuilder.build("Text", new String[][]{{"Btn1:cb1", "Btn2:cb2"}, {"Btn3:cb3"}})
- */
+
 public class KeyboardBuilder {
-    
-    /**
-     * Создает клавиатуру с одной кнопкой в каждой строке.
-     * Формат кнопок: "текст:callbackData"
-     */
+
     public static KeyboardWrapper build(String text, String... buttons) {
         List<InlineKeyboardRow> rows = new ArrayList<>();
         for (String button : buttons) {
@@ -35,11 +26,6 @@ public class KeyboardBuilder {
         return new KeyboardWrapper(text, InlineKeyboardMarkup.builder().keyboard(rows).build());
     }
 
-    /**
-     * Создает клавиатуру с несколькими кнопками в строке.
-     * Каждый массив = одна строка кнопок.
-     * Формат: new String[][]{{"текст1:cb1", "текст2:cb2"}, {"текст3:cb3"}}
-     */
     public static KeyboardWrapper build(String text, String[][] buttonRows) {
         List<InlineKeyboardRow> rows = new ArrayList<>();
         for (String[] buttonRow : buttonRows) {
