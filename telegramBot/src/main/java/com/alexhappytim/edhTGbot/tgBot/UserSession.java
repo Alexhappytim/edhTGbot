@@ -3,6 +3,8 @@ package com.alexhappytim.edhTGbot.tgBot;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.*;
 
@@ -10,6 +12,7 @@ import java.util.*;
 @Setter
 @AllArgsConstructor
 public class UserSession implements Serializable {
+    @Serial
     private static final long serialVersionUID = 1L;
     private String tournamentId;
     private String tournamentType;

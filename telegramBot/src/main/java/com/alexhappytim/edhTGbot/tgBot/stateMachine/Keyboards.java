@@ -10,8 +10,8 @@ public enum Keyboards {
             "Создать турнир:kbd:tournament_creating",
             "Присоединиться к турниру:cmd:join_any_tournament",
             "Переключиться на турнир:cmd:switch_tournament",
-            "Управление моим турниром:cmd:manage_my_tournament",
-            "Посмотреть инфо о турнире:kbd:tournament_info"
+            "Перейти к турниру:cmd:manage_my_tournament"
+            //"Посмотреть инфо о турнире:kbd:tournament_info"
     )),
     
     TOURNAMENT_CREATING(KeyboardBuilder.build(

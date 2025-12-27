@@ -50,4 +50,18 @@ public class UserController {
         dto.setChatId(user.getChatId());
         return ResponseEntity.ok(dto);
     }
+    
+    @GetMapping("/telegram/{telegramId}")
+    public ResponseEntity<UserDTO> getUserByTelegramId(@PathVariable Long telegramId) {
+        User user = userRepository.findByTelegramId(telegramId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        
+        UserDTO dto = new UserDTO();
+        dto.setId(user.getId());
+        dto.setUserTag(user.getUserTag());
+        dto.setTelegramId(user.getTelegramId());
+        dto.setDisplayName(user.getDisplayName());
+        dto.setChatId(user.getChatId());
+        return ResponseEntity.ok(dto);
+    }
 }

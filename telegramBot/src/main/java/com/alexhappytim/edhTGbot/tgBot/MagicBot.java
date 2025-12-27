@@ -20,10 +20,16 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
+import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery;
+import org.telegram.telegrambots.meta.api.objects.inlinequery.InlineQuery;
+import org.telegram.telegrambots.meta.api.objects.inlinequery.inputmessagecontent.InputTextMessageContent;
+import org.telegram.telegrambots.meta.api.objects.inlinequery.result.InlineQueryResultArticle;
 
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 import static java.lang.Math.toIntExact;
 import static org.telegram.telegrambots.abilitybots.api.objects.Locality.USER;
@@ -54,6 +60,12 @@ public class MagicBot extends AbilityBot implements BotFacade {
     @Override
     public void consume(Update update) {
         try {
+            // Handle inline queries
+            if (update.hasInlineQuery()) {
+                handleInlineQuery(update.getInlineQuery());
+                return;
+            }
+            
             long userId = 0;
             if (update.hasCallbackQuery()) {
                 userId = update.getCallbackQuery().getFrom().getId();
@@ -192,6 +204,16 @@ public class MagicBot extends AbilityBot implements BotFacade {
                 .privacy(PUBLIC)
                 .locality(USER)
                 .action(ctx -> {
+                    long userId = ctx.chatId();
+                    String[] args = ctx.arguments();
+                    
+                    // Handle deep link for tournament join
+                    if (args.length > 0 && args[0].startsWith("join_")) {
+                        String tournamentId = args[0].substring(5); // Remove "join_" prefix
+                        handleTournamentJoinDeepLink(userId, tournamentId);
+                        return;
+                    }
+                    
                     KeyboardWrapper kb = Keyboards.MAIN.getKeyboard();
                     SendMessage msg = SendMessage.builder()
                             .chatId(ctx.chatId())
@@ -201,6 +223,147 @@ public class MagicBot extends AbilityBot implements BotFacade {
                     silent.execute(msg);
                 })
                 .build();
+    }
+    
+    private void handleInlineQuery(InlineQuery inlineQuery) {
+        try {
+            Long userId = inlineQuery.getFrom().getId();
+            
+            // Fetch tournaments owned by user
+            String url = restBaseUrl + "/tournaments/by-owner/" + userId;
+            com.alexhappytim.mtg.dto.OwnerTournamentDTO[] tournaments = restTemplate.getForObject(url, com.alexhappytim.mtg.dto.OwnerTournamentDTO[].class);
+            
+            List<InlineQueryResultArticle> results = new ArrayList<>();
+            
+            if (tournaments != null && tournaments.length > 0) {
+                for (com.alexhappytim.mtg.dto.OwnerTournamentDTO tournament : tournaments) {
+                    String typeDisplay = tournament.getType().equals("SWISS") ? "Швейцарка" : "Казуал";
+                    String description = typeDisplay + " - " + tournament.getName();
+                    
+                    // Create inline keyboard with join button
+                    InlineKeyboardButton joinButton = InlineKeyboardButton.builder()
+                            .text("Присоединиться к турниру")
+                            .url("https://t.me/" + getBotUsername() + "?start=join_" + tournament.getId())
+                            .build();
+                    InlineKeyboardRow row = new InlineKeyboardRow();
+                    row.add(joinButton);
+                    InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder()
+                            .keyboardRow(row)
+                            .build();
+                    
+                    InputTextMessageContent messageContent = InputTextMessageContent.builder()
+                            .messageText("🎯 *" + tournament.getName() + "*\n\n" +
+                                       "Тип: " + typeDisplay + "\n" +
+                                       "ID: `" + tournament.getId() + "`\n\n" +
+                                       "Нажмите кнопку ниже, чтобы присоединиться!")
+                            .parseMode("Markdown")
+                            .build();
+                    
+                    InlineQueryResultArticle article = InlineQueryResultArticle.builder()
+                            .id(tournament.getId())
+                            .title(tournament.getName())
+                            .description(description)
+                            .inputMessageContent(messageContent)
+                            .replyMarkup(keyboard)
+                            .build();
+                    
+                    results.add(article);
+                }
+            }
+            
+            AnswerInlineQuery answer = AnswerInlineQuery.builder()
+                    .inlineQueryId(inlineQuery.getId())
+                    .results(results)
+                    .cacheTime(0)
+                    .build();
+            
+            silent.execute(answer);
+            
+        } catch (Exception e) {
+            log.error("Failed to handle inline query", e);
+        }
+    }
+    
+    private void handleTournamentJoinDeepLink(long userId, String tournamentId) {
+        try {
+            // Check if user is registered
+            String checkUrl = restBaseUrl + "/users/telegram/" + userId;
+            boolean userExists = false;
+            try {
+                restTemplate.getForEntity(checkUrl, String.class);
+                userExists = true;
+            } catch (Exception e) {
+                log.info("User {} not found, will register", userId);
+            }
+            
+            // If user doesn't exist, trigger registration
+            if (!userExists) {
+                sendMessage(userId, "Добро пожаловать! Сначала зарегистрируйтесь, введя свой ник:");
+                UserSession session = getSession(userId);
+                if (session == null) {
+                    session = new UserSession(null, null, null, null, null);
+                }
+                session.setPendingCommandKey("register");
+                session.setInputs(new ArrayList<>());
+                session.setInputStep(0);
+                // Store tournament ID to join after registration
+                session.setTournamentId(tournamentId);
+                setSession(userId, session);
+                return;
+            }
+            
+            // User exists, proceed with join
+            joinUserToTournament(userId, tournamentId);
+            
+        } catch (Exception e) {
+            log.error("Failed to handle deep link for user {} and tournament {}", userId, tournamentId, e);
+            sendMessage(userId, "❌ Ошибка при присоединении к турниру");
+        }
+    }
+    
+    @Override
+    public void joinUserToTournament(long userId, String tournamentId) {
+        try {
+            com.alexhappytim.mtg.dto.JoinTournamentRequest request = new com.alexhappytim.mtg.dto.JoinTournamentRequest();
+            request.setUserId(userId);
+            request.setIsTemporary(false);
+            
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            org.springframework.http.HttpEntity<com.alexhappytim.mtg.dto.JoinTournamentRequest> entity = 
+                new org.springframework.http.HttpEntity<>(request, headers);
+            
+            org.springframework.http.ResponseEntity<String> response = restTemplate.postForEntity(
+                    restBaseUrl + "/tournaments/" + tournamentId + "/join",
+                    entity, String.class);
+            
+            com.fasterxml.jackson.databind.JsonNode responseJson = objectMapper.readTree(response.getBody());
+            boolean joined = responseJson.get("joined").asBoolean();
+            String tournamentType = responseJson.get("tournamentType").asText();
+            
+            UserSession session = getSession(userId);
+            if (session == null) {
+                session = new UserSession(null, null, null, null, null);
+            }
+            session.setTournamentId(tournamentId);
+            session.setTournamentType(tournamentType);
+            session.addTournament(tournamentId, tournamentType);
+            setSession(userId, session);
+            
+            if (joined) {
+                sendMessage(userId, "✅ Вы успешно присоединились к турниру " + tournamentId);
+            } else {
+                sendMessage(userId, "ℹ️ Вы уже зарегистрированы в турнире " + tournamentId);
+            }
+            
+            // Show main keyboard
+            KeyboardWrapper kb = Keyboards.MAIN.getKeyboard();
+            sendMessage(userId, kb.getText(), kb.getKeyboard());
+            
+        } catch (Exception e) {
+            log.error("Failed to join user {} to tournament {}", userId, tournamentId, e);
+            sendMessage(userId, "❌ Ошибка при присоединении: " + e.getMessage());
+        }
     }
 
     @Override

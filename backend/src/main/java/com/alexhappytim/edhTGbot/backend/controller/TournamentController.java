@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 @RestController
@@ -182,5 +183,38 @@ public class TournamentController {
         }
 
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/by-owner/{ownerId}")
+    public ResponseEntity<List<OwnerTournamentDTO>> getTournamentsByOwner(@PathVariable Long ownerId) {
+        List<OwnerTournamentDTO> result = new ArrayList<>();
+        
+        // Fetch Swiss tournaments
+        List<SwissTournament> swissTournaments = swissTournamentRepository.findAll().stream()
+                .filter(t -> t.getOwner() != null && t.getOwner().getTelegramId().equals(ownerId))
+                .collect(Collectors.toList());
+        
+        for (SwissTournament st : swissTournaments) {
+            OwnerTournamentDTO dto = new OwnerTournamentDTO();
+            dto.setId(st.getId());
+            dto.setName(st.getName());
+            dto.setType("SWISS");
+            result.add(dto);
+        }
+        
+        // Fetch Casual tournaments
+        List<TournamentCasual> casualTournaments = casualRepository.findAll().stream()
+                .filter(t -> t.getOwner() != null && t.getOwner().getTelegramId().equals(ownerId))
+                .collect(Collectors.toList());
+        
+        for (TournamentCasual ct : casualTournaments) {
+            OwnerTournamentDTO dto = new OwnerTournamentDTO();
+            dto.setId(ct.getId());
+            dto.setName(ct.getName());
+            dto.setType("CASUAL");
+            result.add(dto);
+        }
+        
+        return ResponseEntity.ok(result);
     }
 }

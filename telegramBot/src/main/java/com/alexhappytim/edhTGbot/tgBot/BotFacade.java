@@ -24,5 +24,7 @@ public interface BotFacade {
     String getRestBaseUrl();
     RestTemplate getRestTemplate();
     ObjectMapper getObjectMapper();
+    
+    void joinUserToTournament(long userId, String tournamentId);
 
 }

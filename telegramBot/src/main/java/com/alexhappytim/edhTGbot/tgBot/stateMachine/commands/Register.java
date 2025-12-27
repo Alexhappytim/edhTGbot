@@ -50,6 +50,14 @@ public class Register extends Command{
 
             bot.getLogger().info("User {} registered successfully with ID: {}", username, node.get("id").asText());
             bot.sendMessage(chatId, "✅ Зарегистрированы! User ID: " + node.get("id").asText());
+            
+            // Check if there's a pending tournament join from deep link
+            String pendingTournamentId = bot.getSession(userId).getTournamentId();
+            if (pendingTournamentId != null && !pendingTournamentId.isEmpty()) {
+                bot.getLogger().info("User {} has pending tournament join: {}", username, pendingTournamentId);
+                bot.sendMessage(chatId, "Присоединяемся к турниру...");
+                bot.joinUserToTournament(userId, pendingTournamentId);
+            }
         }catch (ResourceAccessException e){
             bot.getLogger().error("Registration failed for user {}: {}", username, e.getMessage(), e);
             bot.sendMessage(chatId, "❌ Регистрация не удалась: Невозможно подключиться к серверу");
