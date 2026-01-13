@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.abilitybots.api.bot.AbilityBot;
 import org.telegram.telegrambots.abilitybots.api.objects.Ability;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
+import okhttp3.OkHttpClient;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -26,10 +27,15 @@ import org.telegram.telegrambots.meta.api.objects.inlinequery.inputmessageconten
 import org.telegram.telegrambots.meta.api.objects.inlinequery.result.InlineQueryResultArticle;
 
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.client.BufferingClientHttpRequestFactory;
+import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 import static java.lang.Math.toIntExact;
 import static org.telegram.telegrambots.abilitybots.api.objects.Locality.USER;
@@ -45,16 +51,32 @@ public class MagicBot extends AbilityBot implements BotFacade {
     private final Long adminID;
 
     public MagicBot(String botToken, String botUsername, String restBaseUrl, Long adminID) {
-        super(new OkHttpTelegramClient(botToken), botUsername);
+        super(createTelegramClientWithTimeout(botToken), botUsername);
         this.restBaseUrl = restBaseUrl;
         this.adminID = adminID;
-        this.restTemplate = new RestTemplate();
+        this.restTemplate = createRestTemplateWithTimeout();
         this.objectMapper = new ObjectMapper();
 
         log.info("Initializing MagicBot with username: {}, REST URL: {}", botUsername, restBaseUrl);
         this.onRegister();
         log.info("MagicBot initialized successfully");
 
+    }
+
+    private static OkHttpTelegramClient createTelegramClientWithTimeout(String botToken) {
+        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .writeTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .build();
+        return new OkHttpTelegramClient(okHttpClient, botToken);
+    }
+
+    private RestTemplate createRestTemplateWithTimeout() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(30000); // 30 seconds
+        factory.setReadTimeout(30000);    // 30 seconds
+        return new RestTemplate(new BufferingClientHttpRequestFactory(factory));
     }
 
     @Override
@@ -234,11 +256,11 @@ public class MagicBot extends AbilityBot implements BotFacade {
             com.alexhappytim.mtg.dto.OwnerTournamentDTO[] tournaments = restTemplate.getForObject(url, com.alexhappytim.mtg.dto.OwnerTournamentDTO[].class);
             
             List<InlineQueryResultArticle> results = new ArrayList<>();
-            
+            System.out.println(Arrays.toString(tournaments));
             if (tournaments != null && tournaments.length > 0) {
                 for (com.alexhappytim.mtg.dto.OwnerTournamentDTO tournament : tournaments) {
                     String typeDisplay = tournament.getType().equals("SWISS") ? "Швейцарка" : "Казуал";
-                    String description = typeDisplay + " - " + tournament.getName();
+                    String description = typeDisplay + " - " + tournament.getId();
                     
                     // Create inline keyboard with join button
                     InlineKeyboardButton joinButton = InlineKeyboardButton.builder()
@@ -252,10 +274,11 @@ public class MagicBot extends AbilityBot implements BotFacade {
                             .build();
                     
                     InputTextMessageContent messageContent = InputTextMessageContent.builder()
-                            .messageText("🎯 *" + tournament.getName() + "*\n\n" +
-                                       "Тип: " + typeDisplay + "\n" +
-                                       "ID: `" + tournament.getId() + "`\n\n" +
-                                       "Нажмите кнопку ниже, чтобы присоединиться!")
+                            .messageText("Вас пригласили в турнир\n" +
+                                    "*" + tournament.getName() + "*\n\n" +
+                                    "Тип: " + typeDisplay + "\n" +
+                                    "Код турнира: `" + tournament.getId() + "`\n\n" +
+                                    "Нажмите кнопку ниже, чтобы присоединиться!")
                             .parseMode("Markdown")
                             .build();
                     
@@ -266,7 +289,6 @@ public class MagicBot extends AbilityBot implements BotFacade {
                             .inputMessageContent(messageContent)
                             .replyMarkup(keyboard)
                             .build();
-                    
                     results.add(article);
                 }
             }
